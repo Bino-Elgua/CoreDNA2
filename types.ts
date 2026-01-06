@@ -164,6 +164,14 @@ export interface ProviderConfig {
     stylePreset?: string;
 }
 
+export interface RLMConfig {
+    enabled: boolean;
+    rootModel: LLMProviderId;
+    recursiveModel: LLMProviderId;
+    maxDepth: number;
+    contextWindow: number;
+}
+
 export interface GlobalSettings {
     theme: 'system' | 'light' | 'dark';
     dataCollection: boolean;
@@ -171,6 +179,7 @@ export interface GlobalSettings {
     activeImageGen: ImageProviderId;
     activeVoice: VoiceProviderId;
     activeWorkflow: WorkflowProviderId;
+    rlm: RLMConfig;
     whiteLabel?: { enabled: boolean; agencyName: string; logoUrl: string; };
     llms: Record<string, ProviderConfig>;
     image: Record<string, ProviderConfig>;

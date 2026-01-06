@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
-import { BrandDNA, BattleReport } from '../types';
+import { BrandDNA, BattleReport, GlobalSettings } from '../types';
 import { runBattleSimulation } from '../services/geminiService';
+import rlmService from '../services/rlmService';
 import { useNavigate } from 'react-router-dom';
 
 const BattleModePage: React.FC = () => {
@@ -11,6 +12,8 @@ const BattleModePage: React.FC = () => {
   const [profiles, setProfiles] = useState<BrandDNA[]>([]);
   const [brandAId, setBrandAId] = useState<string>('');
   const [brandBId, setBrandBId] = useState<string>('');
+  const [settings, setSettings] = useState<GlobalSettings | null>(null);
+  const [rlmActive, setRlmActive] = useState(false);
   
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null);
   const [isFighting, setIsFighting] = useState(false);
@@ -29,40 +32,70 @@ const BattleModePage: React.FC = () => {
               }
           } catch(e) {}
       }
+      
+      // Load settings and check RLM status
+      const settingsStored = localStorage.getItem('core_dna_settings');
+      if (settingsStored) {
+          try {
+              const parsedSettings = JSON.parse(settingsStored) as GlobalSettings;
+              setSettings(parsedSettings);
+              setRlmActive(parsedSettings.rlm?.enabled ?? false);
+          } catch (e) {
+              console.error("Failed to load settings", e);
+          }
+      }
   }, []);
 
   const handleFight = async () => {
-      const brandA = profiles.find(p => p.id === brandAId);
-      const brandB = profiles.find(p => p.id === brandBId);
+       const brandA = profiles.find(p => p.id === brandAId);
+       const brandB = profiles.find(p => p.id === brandBId);
 
-      if (!brandA || !brandB) {
-          alert("Please select two distinct brands to battle.");
-          return;
-      }
-      if (brandA.id === brandB.id) {
-          alert("A brand cannot battle itself. Select a different opponent.");
-          return;
-      }
+       if (!brandA || !brandB) {
+           alert("Please select two distinct brands to battle.");
+           return;
+       }
+       if (brandA.id === brandB.id) {
+           alert("A brand cannot battle itself. Select a different opponent.");
+           return;
+       }
 
-      setIsFighting(true);
-      setBattleReport(null);
+       setIsFighting(true);
+       setBattleReport(null);
 
-      try {
-          const report = await runBattleSimulation(brandA, brandB);
-          setBattleReport(report);
-      } catch (e) {
-          console.error(e);
-          alert("The battle simulation failed. The servers might be overloaded with strategy.");
-      } finally {
-          setIsFighting(false);
-      }
-  };
+       try {
+           let report: BattleReport;
+           
+           if (rlmActive && settings?.rlm) {
+               report = await rlmService.runDeepBattleSimulation(brandA, brandB, settings.rlm);
+           } else {
+               report = await runBattleSimulation(brandA, brandB);
+           }
+           
+           setBattleReport(report);
+       } catch (e) {
+           console.error(e);
+           alert("The battle simulation failed. The servers might be overloaded with strategy.");
+       } finally {
+           setIsFighting(false);
+       }
+   };
 
   const brandA = profiles.find(p => p.id === brandAId);
   const brandB = profiles.find(p => p.id === brandBId);
 
   return (
     <div className="container mx-auto px-4 py-8">
+        {rlmActive && (
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 rounded-xl flex items-center gap-3 backdrop-blur-sm"
+            >
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                <span className="text-sm font-bold text-purple-300">RLM Active — Deep analysis with unbounded context</span>
+            </motion.div>
+        )}
+        
         <button 
             onClick={() => navigate(-1)} 
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-dna-primary mb-6 transition-colors font-medium group"

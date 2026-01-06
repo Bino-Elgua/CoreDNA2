@@ -11,6 +11,7 @@ const INITIAL_SETTINGS: GlobalSettings = {
     activeImageGen: 'google',
     activeVoice: 'openai',
     activeWorkflow: 'n8n',
+    rlm: { enabled: false, rootModel: 'google', recursiveModel: 'openai', maxDepth: 5, contextWindow: 200000 },
     whiteLabel: { enabled: false, agencyName: '', logoUrl: '' },
     llms: {
         google: { provider: 'google', enabled: true, apiKey: process.env.API_KEY || '' },
@@ -198,7 +199,7 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
 
 const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency'>('llm');
+    const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm'>('llm');
     const [settings, setSettings] = useState<GlobalSettings>(INITIAL_SETTINGS);
     const [hasChanges, setHasChanges] = useState(false);
 
@@ -351,6 +352,7 @@ const SettingsPage: React.FC = () => {
                     <TabButton id="voice" label="Voice / TTS" icon={<span>🔊</span>} />
                     <TabButton id="workflow" label="Automations" icon={<span>⚡</span>} />
                     <TabButton id="agency" label="Agency Branding" icon={<span>🏢</span>} />
+                    <TabButton id="rlm" label="RLM Mode" icon={<span>♾️</span>} />
                 </div>
 
                 <div className="p-8 bg-gray-50/50 dark:bg-black/20 min-h-[600px]">
@@ -568,6 +570,115 @@ const SettingsPage: React.FC = () => {
                                             <button className="px-4 bg-gray-200 dark:bg-gray-700 text-gray-500 rounded-xl font-bold text-xs uppercase" disabled>Contact Sales</button>
                                         </div>
                                     </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'rlm' && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <div className="p-6 bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl text-white mb-8">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h2 className="text-2xl font-bold font-display flex items-center gap-2">
+                                                Recursive Language Model (RLM)
+                                                <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded uppercase font-black tracking-widest">Pro/Hunter</span>
+                                            </h2>
+                                            <p className="text-gray-200 mt-2 max-w-2xl">
+                                                Process infinite context tasks using recursive language models. Perfect for exhaustive website crawls, deep brand analysis, and extended conversation histories.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-sm uppercase tracking-wider">{settings.rlm?.enabled ? 'Active' : 'Disabled'}</span>
+                                            <button 
+                                                onClick={() => {
+                                                    setSettings(prev => ({ ...prev, rlm: { ...prev.rlm, enabled: !prev.rlm?.enabled } } as any));
+                                                    setHasChanges(true);
+                                                }}
+                                                className={`w-14 h-8 rounded-full relative transition-colors ${settings.rlm?.enabled ? 'bg-purple-500' : 'bg-gray-600'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform ${settings.rlm?.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${!settings.rlm?.enabled ? 'opacity-50 pointer-events-none filter grayscale' : ''}`}>
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Root Model</label>
+                                        <select 
+                                            value={settings.rlm?.rootModel || 'google'}
+                                            onChange={(e) => {
+                                                setSettings(prev => ({...prev, rlm: {...prev.rlm, rootModel: e.target.value as any}}));
+                                                setHasChanges(true);
+                                            }}
+                                            className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        >
+                                            {Object.keys(settings.llms).filter(k => settings.llms[k].enabled).map(k => (
+                                                <option key={k} value={k}>{PROVIDER_META[k]?.title || k}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-400 mt-2">Primary model for root-level analysis.</p>
+                                    </div>
+
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Recursive Model</label>
+                                        <select 
+                                            value={settings.rlm?.recursiveModel || 'openai'}
+                                            onChange={(e) => {
+                                                setSettings(prev => ({...prev, rlm: {...prev.rlm, recursiveModel: e.target.value as any}}));
+                                                setHasChanges(true);
+                                            }}
+                                            className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        >
+                                            {Object.keys(settings.llms).filter(k => settings.llms[k].enabled).map(k => (
+                                                <option key={k} value={k}>{PROVIDER_META[k]?.title || k}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-400 mt-2">Model for recursive sub-task processing.</p>
+                                    </div>
+
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Max Recursion Depth</label>
+                                        <input 
+                                            type="number" 
+                                            min="1"
+                                            max="10"
+                                            value={settings.rlm?.maxDepth || 5}
+                                            onChange={(e) => {
+                                                setSettings(prev => ({...prev, rlm: {...prev.rlm, maxDepth: parseInt(e.target.value)}}));
+                                                setHasChanges(true);
+                                            }}
+                                            className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-2">How many recursion levels to process (1-10).</p>
+                                    </div>
+
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Context Window</label>
+                                        <input 
+                                            type="number" 
+                                            min="50000"
+                                            step="10000"
+                                            value={settings.rlm?.contextWindow || 200000}
+                                            onChange={(e) => {
+                                                setSettings(prev => ({...prev, rlm: {...prev.rlm, contextWindow: parseInt(e.target.value)}}));
+                                                setHasChanges(true);
+                                            }}
+                                            className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-2">Max tokens per request (50k-1M).</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 p-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl">
+                                    <h3 className="font-bold text-purple-900 dark:text-purple-300 mb-3">RLM Mode Capabilities</h3>
+                                    <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-2">
+                                        <li>✓ Extract full website content (entire crawl)</li>
+                                        <li>✓ Deep brand competitive analysis across multiple competitors</li>
+                                        <li>✓ Extended conversation history with Closer Agent</li>
+                                        <li>✓ Unlimited context processing for complex tasks</li>
+                                        <li>✓ Recursive task decomposition and synthesis</li>
+                                    </ul>
                                 </div>
                             </motion.div>
                         )}

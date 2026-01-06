@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { analyzeBrandDNA, findLeadsWithMaps, runCloserAgent, generateAssetImage } from '../services/geminiService';
-import { BrandDNA, LeadProfile } from '../types';
+import rlmService from '../services/rlmService';
+import { BrandDNA, LeadProfile, GlobalSettings } from '../types';
 import DNAProfileCard from '../components/DNAProfileCard';
 import DNAHelix from '../components/DNAHelix';
 import LeadHunterPanel from '../components/LeadHunterPanel';
@@ -17,6 +18,8 @@ const ExtractPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [loadingMsg, setLoadingMsg] = useState('');
     const [dnaResult, setDnaResult] = useState<BrandDNA | null>(null);
+    const [settings, setSettings] = useState<GlobalSettings | null>(null);
+    const [rlmActive, setRlmActive] = useState(false);
     
     // Lead State
     const [niche, setNiche] = useState('');
@@ -27,13 +30,32 @@ const ExtractPage: React.FC = () => {
         if (location.state?.dna) {
             setDnaResult(location.state.dna);
         }
+        
+        // Load settings and check RLM status
+        const stored = localStorage.getItem('core_dna_settings');
+        if (stored) {
+            try {
+                const parsedSettings = JSON.parse(stored) as GlobalSettings;
+                setSettings(parsedSettings);
+                setRlmActive(parsedSettings.rlm?.enabled ?? false);
+            } catch (e) {
+                console.error("Failed to load settings", e);
+            }
+        }
     }, [location.state]);
 
     const handleExtractDNA = async () => {
         setLoading(true);
-        setLoadingMsg('Analyzing Neural Patterns...');
+        setLoadingMsg(rlmActive ? 'RLM Active — Processing unbounded context...' : 'Analyzing Neural Patterns...');
         try {
-            const dna = await analyzeBrandDNA(url, brandName);
+            let dna: BrandDNA;
+            
+            if (rlmActive && settings?.rlm) {
+                dna = await rlmService.extractFullDNA(url, brandName, settings.rlm);
+            } else {
+                dna = await analyzeBrandDNA(url, brandName);
+            }
+            
             setDnaResult(dna);
             const existing = localStorage.getItem('core_dna_profiles');
             const profiles = existing ? JSON.parse(existing) : [];
@@ -92,26 +114,43 @@ const ExtractPage: React.FC = () => {
         setIsProcessingCloser(lead.id);
         try {
              const sender = dnaResult || undefined;
-             const portfolio = await runCloserAgent(lead, sender);
+             let portfolio;
+             
+             if (rlmActive && settings?.rlm) {
+                 portfolio = await rlmService.runExtendedCloserAgent(lead, sender, settings.rlm);
+             } else {
+                 portfolio = await runCloserAgent(lead, sender);
+             }
              
              // Optionally generate the visual for the sample post
              if (portfolio.posts.length > 0) {
-                 const post = portfolio.posts[0];
-                 const img = await generateAssetImage(post.imagePrompt || '', portfolio.targetEssence.visualDNA);
-                 portfolio.posts[0].imageUrl = img;
+                  const post = portfolio.posts[0];
+                  const img = await generateAssetImage(post.imagePrompt || '', portfolio.targetEssence.visualDNA);
+                  portfolio.posts[0].imageUrl = img;
              }
 
              setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, closerPortfolio: portfolio } : l));
         } catch (e) {
-            console.error(e);
-            alert("Failed to generate portfolio.");
+             console.error(e);
+             alert("Failed to generate portfolio.");
         } finally {
-            setIsProcessingCloser(null);
+             setIsProcessingCloser(null);
         }
     };
 
     return (
         <div className="container mx-auto px-4 py-8 pb-20">
+            {rlmActive && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 rounded-xl flex items-center gap-3 backdrop-blur-sm"
+                >
+                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+                    <span className="text-sm font-bold text-purple-300">RLM Active — Processing unbounded context</span>
+                </motion.div>
+            )}
+            
             <button 
                 onClick={() => {
                     if (dnaResult && location.state?.dna) {
