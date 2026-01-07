@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandDNA, GlobalSettings } from '../types';
 import { siteGeneratorService, GeneratedSite } from '../services/siteGeneratorService';
-import { firebaseDeploymentService, DeploymentResult } from '../services/firebaseDeploymentService';
+import { rocketNewService, RocketNewDeploymentResult } from '../services/rocketNewService';
+import { firebaseDeploymentService } from '../services/firebaseDeploymentService';
 import { useNavigate } from 'react-router-dom';
 
 const DEPLOYMENT_STEPS = [
@@ -12,7 +13,7 @@ const DEPLOYMENT_STEPS = [
     { id: 3, label: 'Creating visuals', icon: '🎨' },
     { id: 4, label: 'Building pages', icon: '🏗️' },
     { id: 5, label: 'Embedding Sonic Agent', icon: '🎤' },
-    { id: 6, label: 'Deploying to Firebase Hosting', icon: '🚀' },
+    { id: 6, label: 'Deploying to Rocket.new', icon: '🚀' },
 ];
 
 interface DeploymentState {
@@ -21,7 +22,7 @@ interface DeploymentState {
     progress: number;
     statusMessage: string;
     generatedSite: GeneratedSite | null;
-    deploymentResult: DeploymentResult | null;
+    deploymentResult: RocketNewDeploymentResult | null;
     error: string | null;
 }
 
@@ -30,7 +31,7 @@ const SiteBuilderPage: React.FC = () => {
     const [profiles, setProfiles] = useState<BrandDNA[]>([]);
     const [selectedDnaId, setSelectedDnaId] = useState('');
     const [settings, setSettings] = useState<GlobalSettings | null>(null);
-    const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+    const [userTier, setUserTier] = useState<'free' | 'core' | 'pro' | 'hunter'>('free');
 
     const [deployment, setDeployment] = useState<DeploymentState>({
         isDeploying: false,
@@ -43,8 +44,9 @@ const SiteBuilderPage: React.FC = () => {
     });
 
     const [deployedSites, setDeployedSites] = useState<GeneratedSite[]>([]);
+    const [previewMode, setPreviewMode] = useState<'local' | 'rocket'>('local');
 
-    // Load DNA profiles and settings
+    // Load DNA profiles, settings, and tier
     useEffect(() => {
         const stored = localStorage.getItem('core_dna_profiles');
         if (stored) {
@@ -62,6 +64,9 @@ const SiteBuilderPage: React.FC = () => {
             } catch (e) {}
         }
 
+        const storedTier = localStorage.getItem('user_tier') || 'free';
+        setUserTier(storedTier as any);
+
         const storedSites = localStorage.getItem('core_dna_deployed_sites');
         if (storedSites) {
             try {
@@ -71,13 +76,36 @@ const SiteBuilderPage: React.FC = () => {
     }, []);
 
     const selectedDna = profiles.find(p => p.id === selectedDnaId);
+    const isPaidTier = userTier === 'pro' || userTier === 'hunter';
+    const hasRocketKey = !!localStorage.getItem('rocket_new_api_key');
+    const canDeployLive = isPaidTier && hasRocketKey;
 
-    const handleBuildAndDeploy = async () => {
+    const handleBuild = async () => {
         if (!selectedDna || !settings) {
             setDeployment(prev => ({ ...prev, error: 'Missing brand profile or settings' }));
             return;
         }
 
+        // If Free/Core → local preview only
+        if (!isPaidTier) {
+            await handleLocalBuild();
+            return;
+        }
+
+        // If Pro/Hunter but no Rocket key → show error
+        if (!hasRocketKey) {
+            setDeployment(prev => ({
+                ...prev,
+                error: 'Rocket.new API key not configured. Add it in Settings → Website Options.',
+            }));
+            return;
+        }
+
+        // If Pro/Hunter with key → deploy to Rocket.new
+        await handleRocketNewDeploy();
+    };
+
+    const handleLocalBuild = async () => {
         setDeployment({
             isDeploying: true,
             currentStep: 1,
@@ -89,9 +117,8 @@ const SiteBuilderPage: React.FC = () => {
         });
 
         try {
-            // Step 1-5: Generate site
             const generatedSite = await siteGeneratorService.generateSite(
-                selectedDna,
+                selectedDna!,
                 undefined,
                 settings,
                 (step, progress) => {
@@ -99,7 +126,56 @@ const SiteBuilderPage: React.FC = () => {
                     setDeployment(prev => ({
                         ...prev,
                         currentStep: stepIndex + 1,
-                        progress: 10 + (progress * 0.5),
+                        progress: 10 + (progress * 0.9),
+                        statusMessage: step,
+                    }));
+                }
+            );
+
+            setDeployment(prev => ({
+                ...prev,
+                isDeploying: false,
+                currentStep: 5,
+                progress: 100,
+                statusMessage: 'Preview ready — local build (no deployment)',
+                generatedSite,
+                deploymentResult: null,
+            }));
+
+            setPreviewMode('local');
+        } catch (e: any) {
+            console.error('Local build error:', e);
+            setDeployment(prev => ({
+                ...prev,
+                isDeploying: false,
+                error: e.message || 'Build failed',
+            }));
+        }
+    };
+
+    const handleRocketNewDeploy = async () => {
+        setDeployment({
+            isDeploying: true,
+            currentStep: 1,
+            progress: 10,
+            statusMessage: 'Building deployment payload...',
+            generatedSite: null,
+            deploymentResult: null,
+            error: null,
+        });
+
+        try {
+            // Generate site structure first
+            const generatedSite = await siteGeneratorService.generateSite(
+                selectedDna!,
+                undefined,
+                settings,
+                (step, progress) => {
+                    const stepIndex = DEPLOYMENT_STEPS.findIndex(s => s.label === step);
+                    setDeployment(prev => ({
+                        ...prev,
+                        currentStep: Math.min(stepIndex + 1, 5),
+                        progress: 10 + (progress * 0.4),
                         statusMessage: step,
                     }));
                 }
@@ -109,30 +185,36 @@ const SiteBuilderPage: React.FC = () => {
                 ...prev,
                 generatedSite,
                 currentStep: 6,
-                progress: 60,
-                statusMessage: 'Deploying to Firebase Hosting...',
+                progress: 50,
+                statusMessage: 'Sending to Rocket.new...',
             }));
 
-            // Step 6: Deploy to Firebase
-            const deployConfig = {
-                firebaseProjectId: settings?.whiteLabel?.agencyName || 'coredna-default',
-                firebaseApiKey: localStorage.getItem('firebase_api_key') || '',
-                firebaseStorageBucket: localStorage.getItem('firebase_storage_bucket') || '',
+            // Deploy to Rocket.new
+            const rocketKey = localStorage.getItem('rocket_new_api_key') || '';
+            const sonicConfig = {
+                enabled: localStorage.getItem('website_disable_sonic_agent') !== 'true',
+                voiceEnabled: localStorage.getItem('website_disable_voice_mode') !== 'true',
+                ttsProvider: settings?.activeVoice || 'elevenlabs',
+                voiceType: selectedDna!.sonicIdentity?.voiceType || 'professional',
             };
 
-            const result = await firebaseDeploymentService.deploySite(
-                generatedSite,
-                deployConfig,
+            const result = await rocketNewService.deploySite(
+                selectedDna!,
+                rocketKey,
+                sonicConfig,
                 (message, progress) => {
                     setDeployment(prev => ({
                         ...prev,
-                        progress: 60 + (progress * 0.4),
+                        progress: 50 + (progress * 0.5),
                         statusMessage: message,
                     }));
                 }
             );
 
-            // Success
+            if (!result.success) {
+                throw new Error(result.error || 'Deployment failed');
+            }
+
             const updatedSites = [...deployedSites, generatedSite];
             setDeployedSites(updatedSites);
             localStorage.setItem('core_dna_deployed_sites', JSON.stringify(updatedSites));
@@ -142,28 +224,20 @@ const SiteBuilderPage: React.FC = () => {
                 isDeploying: false,
                 currentStep: 6,
                 progress: 100,
-                statusMessage: 'Site live — chat active!',
+                statusMessage: 'Site live — Sonic Agent active!',
+                generatedSite,
                 deploymentResult: result,
             }));
+
+            setPreviewMode('rocket');
         } catch (e: any) {
-            console.error('Deployment error:', e);
+            console.error('Rocket.new deployment error:', e);
             setDeployment(prev => ({
                 ...prev,
                 isDeploying: false,
                 error: e.message || 'Deployment failed',
             }));
         }
-    };
-
-    const handleOpenSite = (site: GeneratedSite) => {
-        // Open the deployed site URL
-        window.open(deployment.deploymentResult?.siteUrl || `https://${site.id}.coredna.app`, '_blank');
-    };
-
-    const handleCopyLink = (site: GeneratedSite) => {
-        const url = deployment.deploymentResult?.siteUrl || `https://${site.id}.coredna.app`;
-        navigator.clipboard.writeText(url);
-        alert('Link copied to clipboard!');
     };
 
     return (
@@ -177,8 +251,10 @@ const SiteBuilderPage: React.FC = () => {
                     >
                         ← Back
                     </button>
-                    <h1 className="text-5xl font-bold text-white mb-2">Site Builder</h1>
-                    <p className="text-xl text-gray-400">One-click professional websites from your BrandDNA</p>
+                    <h1 className="text-5xl font-bold text-white mb-2">Website Builder</h1>
+                    <p className="text-xl text-gray-400">
+                        {isPaidTier ? '🚀 Deploy real live sites with Rocket.new' : '📋 Preview local build (Free tier)'}
+                    </p>
                 </div>
 
                 {/* Main Grid */}
@@ -186,6 +262,17 @@ const SiteBuilderPage: React.FC = () => {
                     {/* LEFT: Controls */}
                     <div className="lg:col-span-1">
                         <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 sticky top-24">
+                            {/* Tier Badge */}
+                            <div className="mb-6 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                <p className="text-xs font-bold text-blue-300 uppercase">Current Tier</p>
+                                <p className="text-lg font-bold text-white capitalize mt-1">{userTier}</p>
+                                {!isPaidTier && (
+                                    <button className="mt-3 text-xs bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded font-bold transition-colors">
+                                        Upgrade to Pro
+                                    </button>
+                                )}
+                            </div>
+
                             {/* Brand Selector */}
                             <div className="mb-8">
                                 <label className="block text-xs font-bold uppercase text-gray-400 mb-3">Select Brand</label>
@@ -220,19 +307,19 @@ const SiteBuilderPage: React.FC = () => {
 
                             {/* Build Button */}
                             <button 
-                                onClick={handleBuildAndDeploy}
+                                onClick={handleBuild}
                                 disabled={deployment.isDeploying || !selectedDna}
                                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg font-bold shadow-lg hover:shadow-blue-500/50 hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {deployment.isDeploying ? (
                                     <>
                                         <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
-                                        Building & Deploying...
+                                        {isPaidTier ? 'Deploying...' : 'Building...'}
                                     </>
                                 ) : (
                                     <>
-                                        <span>🚀</span>
-                                        Build & Deploy Site
+                                        <span>{isPaidTier ? '🚀' : '📋'}</span>
+                                        {isPaidTier ? 'Deploy to Rocket.new' : 'Build Local Preview'}
                                     </>
                                 )}
                             </button>
@@ -241,6 +328,25 @@ const SiteBuilderPage: React.FC = () => {
                             {deployment.error && (
                                 <div className="mt-4 p-4 bg-red-500/10 rounded-lg border border-red-500/30">
                                     <p className="text-red-300 text-sm">{deployment.error}</p>
+                                </div>
+                            )}
+
+                            {/* Rocket.new Status */}
+                            {isPaidTier && (
+                                <div className={`mt-4 p-4 rounded-lg border text-sm ${
+                                    hasRocketKey
+                                        ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                                        : 'bg-orange-500/10 border-orange-500/30 text-orange-300'
+                                }`}>
+                                    <p className="font-bold mb-1">
+                                        {hasRocketKey ? '✓ Rocket.new Connected' : '⚠ Rocket.new Not Connected'}
+                                    </p>
+                                    <p className="text-xs">
+                                        {hasRocketKey
+                                            ? 'Ready to deploy live sites'
+                                            : 'Add API key in Settings → Website Options'
+                                        }
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -255,7 +361,9 @@ const SiteBuilderPage: React.FC = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="bg-gray-800 rounded-2xl p-8 border border-gray-700"
                             >
-                                <h2 className="text-2xl font-bold text-white mb-8">Building Your Site</h2>
+                                <h2 className="text-2xl font-bold text-white mb-8">
+                                    {isPaidTier ? 'Deploying to Rocket.new' : 'Building Preview'}
+                                </h2>
 
                                 {/* Progress Bar */}
                                 <div className="mb-8">
@@ -275,7 +383,7 @@ const SiteBuilderPage: React.FC = () => {
 
                                 {/* Step-by-step progress */}
                                 <div className="space-y-3">
-                                    {DEPLOYMENT_STEPS.map((step, i) => (
+                                    {DEPLOYMENT_STEPS.slice(0, isPaidTier ? 6 : 5).map((step, i) => (
                                         <div
                                             key={step.id}
                                             className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
@@ -302,8 +410,8 @@ const SiteBuilderPage: React.FC = () => {
                                     ))}
                                 </div>
                             </motion.div>
-                        ) : deployment.deploymentResult?.success ? (
-                            // Success Result
+                        ) : deployment.deploymentResult?.success && isPaidTier ? (
+                            // Rocket.new Success
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -312,8 +420,8 @@ const SiteBuilderPage: React.FC = () => {
                                 <div className="flex items-start gap-4 mb-8">
                                     <span className="text-5xl">🎉</span>
                                     <div>
-                                        <h2 className="text-3xl font-bold text-white">Site Live!</h2>
-                                        <p className="text-gray-400">Your professional website is now live</p>
+                                        <h2 className="text-3xl font-bold text-white">Live on Rocket.new!</h2>
+                                        <p className="text-gray-400">Your professional website is now deployed</p>
                                     </div>
                                 </div>
 
@@ -325,12 +433,15 @@ const SiteBuilderPage: React.FC = () => {
                                         <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg mb-4">
                                             <input
                                                 type="text"
-                                                value={deployment.deploymentResult?.siteUrl || `https://${deployment.generatedSite.id}.coredna.app`}
+                                                value={deployment.deploymentResult?.siteUrl || ''}
                                                 readOnly
-                                                className="flex-1 bg-transparent text-white text-sm outline-none"
+                                                className="flex-1 bg-transparent text-white text-sm outline-none truncate"
                                             />
                                             <button
-                                                onClick={() => handleCopyLink(deployment.generatedSite!)}
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(deployment.deploymentResult?.siteUrl || '');
+                                                    alert('Link copied!');
+                                                }}
                                                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
                                             >
                                                 Copy
@@ -340,17 +451,18 @@ const SiteBuilderPage: React.FC = () => {
                                         {/* Actions */}
                                         <div className="grid grid-cols-2 gap-3">
                                             <button
-                                                onClick={() => handleOpenSite(deployment.generatedSite!)}
+                                                onClick={() => window.open(deployment.deploymentResult?.siteUrl, '_blank')}
                                                 className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
                                             >
                                                 <span>🌐</span>
                                                 Open Site
                                             </button>
                                             <button
+                                                onClick={() => window.open(deployment.deploymentResult?.chatUrl, '_blank')}
                                                 className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
                                             >
                                                 <span>💬</span>
-                                                View Chat
+                                                Test Chat
                                             </button>
                                         </div>
                                     </div>
@@ -363,65 +475,71 @@ const SiteBuilderPage: React.FC = () => {
                                         <p className="text-white font-bold">{(deployment.deploymentResult!.buildTime / 1000).toFixed(1)}s</p>
                                     </div>
                                     <div className="p-3 bg-gray-700/30 rounded-lg">
-                                        <p className="text-gray-500 text-xs mb-1">Deployed At</p>
-                                        <p className="text-white font-bold">
-                                            {new Date(deployment.deploymentResult!.deployedAt).toLocaleTimeString()}
-                                        </p>
+                                        <p className="text-gray-500 text-xs mb-1">Deployed</p>
+                                        <p className="text-white font-bold">Just now</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ) : deployment.generatedSite && !isPaidTier ? (
+                            // Local Preview + Upgrade Banner
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-6"
+                            >
+                                {/* Upgrade Banner */}
+                                <div className="bg-gradient-to-r from-orange-600 to-orange-500 rounded-2xl p-6 text-white border border-orange-400">
+                                    <div className="flex items-start gap-4">
+                                        <span className="text-4xl">🚀</span>
+                                        <div className="flex-1">
+                                            <h3 className="text-2xl font-bold mb-2">Ready for a Real Live Site?</h3>
+                                            <p className="text-sm text-orange-100 mb-4">
+                                                Upgrade to <strong>Pro</strong> to deploy this site to Rocket.new with a live URL and 24/7 Sonic Agent chat.
+                                            </p>
+                                            <button className="px-6 py-2 bg-white text-orange-600 rounded-lg font-bold hover:bg-orange-50 transition-colors">
+                                                Upgrade to Pro →
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Local Preview */}
+                                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                                    <h3 className="text-xl font-bold text-white mb-4">📋 Local Preview</h3>
+                                    <p className="text-gray-400 text-sm mb-4">
+                                        This is a preview of what your site will look like. It's not deployed live.
+                                    </p>
+                                    <div className="p-4 bg-gray-700/30 rounded-lg border border-gray-600 text-center">
+                                        <p className="text-gray-400">Preview rendering not available in this view</p>
+                                        <p className="text-xs text-gray-500 mt-2">Full site preview coming soon</p>
                                     </div>
                                 </div>
                             </motion.div>
                         ) : (
                             // Empty State
                             <div className="bg-gray-800 rounded-2xl p-12 border border-gray-700 text-center">
-                                <span className="text-6xl mb-4 block">🏗️</span>
+                                <span className="text-6xl mb-4 block">{isPaidTier ? '🚀' : '📋'}</span>
                                 <h2 className="text-2xl font-bold text-white mb-2">Ready to Build?</h2>
-                                <p className="text-gray-400 mb-6">Select a brand and click "Build & Deploy Site" to generate your professional website</p>
+                                <p className="text-gray-400 mb-6">
+                                    {isPaidTier
+                                        ? 'Select a brand and deploy to Rocket.new for a live, deployed site with Sonic Agent'
+                                        : 'Select a brand and build a local preview of your site'
+                                    }
+                                </p>
                                 <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                                        <p className="text-blue-300 font-bold">5 Pages</p>
+                                    <div className={`p-3 rounded-lg border ${isPaidTier ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                                        <p className={`${isPaidTier ? 'text-blue-300' : 'text-blue-300'} font-bold`}>5+ Pages</p>
                                         <p className="text-gray-400 text-xs">Home, About, Services, Portfolio, Contact</p>
                                     </div>
-                                    <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
-                                        <p className="text-purple-300 font-bold">AI Chat</p>
-                                        <p className="text-gray-400 text-xs">Sonic Agent embedded & ready</p>
+                                    <div className={`p-3 rounded-lg border ${isPaidTier ? 'bg-purple-500/10 border-purple-500/30' : 'opacity-50'}`}>
+                                        <p className={`${isPaidTier ? 'text-purple-300' : 'text-gray-400'} font-bold`}>AI Chat</p>
+                                        <p className={`text-xs ${isPaidTier ? 'text-gray-400' : 'text-gray-500'}`}>Sonic Agent {isPaidTier ? 'embedded & live' : '(pro only)'}</p>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Previous Deployments */}
-                {deployedSites.length > 0 && !deployment.isDeploying && (
-                    <div className="mt-12">
-                        <h2 className="text-2xl font-bold text-white mb-6">Previously Built Sites</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {deployedSites.map(site => (
-                                <motion.div
-                                    key={site.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 transition-colors group cursor-pointer"
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-white">{site.dnaName}</h3>
-                                            <p className="text-xs text-gray-500">Built {new Date(site.generatedAt).toLocaleDateString()}</p>
-                                        </div>
-                                        <span className="text-2xl">🌐</span>
-                                    </div>
-                                    <p className="text-sm text-gray-400 mb-4 line-clamp-2">{site.title}</p>
-                                    <button
-                                        onClick={() => window.open(`https://${site.id}.coredna.app`, '_blank')}
-                                        className="w-full px-3 py-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-lg text-sm font-bold transition-colors"
-                                    >
-                                        Open →
-                                    </button>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -561,12 +561,47 @@ const SettingsPage: React.FC = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Firebase Configuration */}
-                                    <div className="md:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    {/* Rocket.new Configuration (Pro/Hunter) */}
+                                    <div className="md:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-2xl border border-orange-200 dark:border-orange-700 shadow-sm ring-1 ring-orange-100 dark:ring-orange-900">
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
-                                                <h3 className="font-bold text-lg">Firebase Hosting</h3>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure Firebase Hosting credentials for site deployment</p>
+                                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                                    Rocket.new Deployment
+                                                    <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded uppercase font-black tracking-widest">Pro/Hunter</span>
+                                                </h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">One-click live site deployment with real URLs and Sonic Agent integration</p>
+                                            </div>
+                                            <span className="text-2xl">🚀</span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Rocket.new API Key</label>
+                                                <input 
+                                                    type="password" 
+                                                    placeholder="●●●●●●●●●●●●"
+                                                    defaultValue={localStorage.getItem('rocket_new_api_key') || ''}
+                                                    onChange={(e) => {
+                                                        localStorage.setItem('rocket_new_api_key', e.target.value);
+                                                        setHasChanges(true);
+                                                    }}
+                                                    className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 outline-none"
+                                                />
+                                                <p className="text-xs text-gray-400 mt-2">Get your API key at <a href="https://rocket.new" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">rocket.new</a> → Settings → API Keys</p>
+                                            </div>
+                                            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                                                <p className="text-xs text-orange-800 dark:text-orange-200">
+                                                    <span className="font-bold">Pro Tier:</span> Deploy to Rocket.new + get live URL + Sonic Agent chat
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Firebase Configuration (Legacy/Fallback) */}
+                                    <div className="md:col-span-2 p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm opacity-60">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg">Firebase Hosting (Legacy)</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Fallback for custom Firebase deployment (optional)</p>
                                             </div>
                                             <span className="text-2xl">🔥</span>
                                         </div>
