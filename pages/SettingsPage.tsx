@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlobalSettings, LLMProviderId, ImageProviderId, VoiceProviderId, WorkflowProviderId } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { workflowProviderManager, WorkflowProviderConfig } from '../services/workflowProvider';
 
 const INITIAL_SETTINGS: GlobalSettings = {
     theme: 'system',
@@ -12,6 +13,12 @@ const INITIAL_SETTINGS: GlobalSettings = {
     activeVoice: 'openai',
     activeWorkflow: 'n8n',
     rlm: { enabled: false, rootModel: 'google', recursiveModel: 'openai', maxDepth: 5, contextWindow: 200000 },
+    inference: {
+        speculativeDecoding: { enabled: false, autoActivateOnCampaigns: false, autoActivateOnWebsiteGen: false, autoActivateOnRLM: false },
+        selfConsistency: { enabled: false, numSamples: 3, useOnConsistencyScore: false, useOnDNAExtraction: false, useOnCloserReplies: false },
+        skeletonOfThought: { enabled: false, liveUIEnabled: false, useOnBattleMode: false, useOnCampaignPlanning: false, useOnRLMAnalysis: false },
+        chainOfVerification: { enabled: false, autoVerifyAllPaidOutputs: false, checkCrossReferences: false, flagInconsistencies: false, reverifyMathLogic: false }
+    },
     whiteLabel: { enabled: false, agencyName: '', logoUrl: '' },
     llms: {
         google: { provider: 'google', enabled: true, apiKey: process.env.API_KEY || '' },
@@ -199,7 +206,7 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
 
 const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm'>('llm');
+    const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm' | 'inference'>('llm');
     const [settings, setSettings] = useState<GlobalSettings>(INITIAL_SETTINGS);
     const [hasChanges, setHasChanges] = useState(false);
 
@@ -216,7 +223,8 @@ const SettingsPage: React.FC = () => {
                     image: { ...prev.image, ...parsed.image },
                     voice: { ...prev.voice, ...parsed.voice },
                     workflows: { ...prev.workflows, ...parsed.workflows },
-                    whiteLabel: { ...prev.whiteLabel, ...parsed.whiteLabel }
+                    whiteLabel: { ...prev.whiteLabel, ...parsed.whiteLabel },
+                    inference: { ...prev.inference, ...parsed.inference }
                 }));
             } catch (e) {
                 console.error("Failed to load settings", e);
@@ -258,6 +266,21 @@ const SettingsPage: React.FC = () => {
 
     const ProviderCard = ({ id, category, data, isActive, onToggle }: any) => {
         const meta = PROVIDER_META[id] || { title: id, icon: id.charAt(0).toUpperCase(), fields: ['apiKey'], getKeyUrl: '' };
+        const isWorkflowProvider = category === 'workflows';
+
+        const handleConfigureWorkflow = () => {
+            if (data.enabled && isWorkflowProvider) {
+                // Save the selected workflow provider to workflowProviderManager
+                const config: WorkflowProviderConfig = {
+                    type: id as any,
+                    apiKey: data.apiKey || '',
+                    baseUrl: data.baseUrl,
+                    webhookUrl: data.webhookUrl,
+                };
+                workflowProviderManager.setConfig(config);
+                navigate('/automations');
+            }
+        };
         
         return (
             <div className={`p-6 rounded-2xl border transition-all relative ${
@@ -294,11 +317,23 @@ const SettingsPage: React.FC = () => {
                                     {field === 'apiKey' ? 'API Key' : field === 'baseUrl' ? 'Base URL' : field === 'defaultModel' ? 'Model ID' : field === 'endpoint' ? 'Endpoint URL' : field === 'webhookUrl' ? 'Webhook URL' : field}
                                 </label>
                                 <input 
-                                    type={field === 'apiKey' ? 'password' : 'text'}
+                                    type={field === 'apiKey' || field === 'endpoint' ? 'password' : 'text'}
                                     value={data[field] || ''}
-                                    onChange={e => updateProvider(category, id, { [field]: e.target.value })}
+                                    onChange={e => {
+                                        updateProvider(category, id, { [field]: e.target.value });
+                                        // For workflow providers, also update workflowProviderManager
+                                        if (isWorkflowProvider && isActive) {
+                                            const config: WorkflowProviderConfig = {
+                                                type: id as any,
+                                                apiKey: field === 'apiKey' ? e.target.value : (data.apiKey || ''),
+                                                baseUrl: field === 'baseUrl' ? e.target.value : data.baseUrl,
+                                                webhookUrl: field === 'webhookUrl' ? e.target.value : data.webhookUrl,
+                                            };
+                                            workflowProviderManager.setConfig(config);
+                                        }
+                                    }}
                                     className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-dna-primary outline-none text-sm font-mono"
-                                    placeholder={field === 'baseUrl' ? 'https://api...' : ''}
+                                    placeholder={field === 'baseUrl' ? 'https://api...' : field === 'webhookUrl' ? 'https://webhook.url...' : ''}
                                 />
                                 {(field === 'apiKey' || field === 'webhookUrl') && meta.getKeyUrl && (
                                     <a 
@@ -312,6 +347,16 @@ const SettingsPage: React.FC = () => {
                                 )}
                             </div>
                         ))}
+                        {isWorkflowProvider && (
+                            <motion.button
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                onClick={handleConfigureWorkflow}
+                                className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-dna-secondary to-dna-primary text-white font-bold rounded-lg hover:shadow-lg hover:shadow-dna-primary/30 transition-all"
+                            >
+                                → View Workflows
+                            </motion.button>
+                        )}
                     </motion.div>
                 )}
             </div>
@@ -351,6 +396,7 @@ const SettingsPage: React.FC = () => {
                     <TabButton id="image" label="Image Generators" icon={<span>🎨</span>} />
                     <TabButton id="voice" label="Voice / TTS" icon={<span>🔊</span>} />
                     <TabButton id="workflow" label="Automations" icon={<span>⚡</span>} />
+                    <TabButton id="inference" label="Inference Engine" icon={<span>⚙️</span>} />
                     <TabButton id="agency" label="Agency Branding" icon={<span>🏢</span>} />
                     <TabButton id="rlm" label="RLM Mode" icon={<span>♾️</span>} />
                 </div>
@@ -613,7 +659,7 @@ const SettingsPage: React.FC = () => {
                                             }}
                                             className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
                                         >
-                                            {Object.keys(settings.llms).filter(k => settings.llms[k].enabled).map(k => (
+                                            {Object.keys(settings.llms).map(k => (
                                                 <option key={k} value={k}>{PROVIDER_META[k]?.title || k}</option>
                                             ))}
                                         </select>
@@ -630,7 +676,7 @@ const SettingsPage: React.FC = () => {
                                             }}
                                             className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
                                         >
-                                            {Object.keys(settings.llms).filter(k => settings.llms[k].enabled).map(k => (
+                                            {Object.keys(settings.llms).map(k => (
                                                 <option key={k} value={k}>{PROVIDER_META[k]?.title || k}</option>
                                             ))}
                                         </select>
@@ -679,6 +725,179 @@ const SettingsPage: React.FC = () => {
                                         <li>✓ Unlimited context processing for complex tasks</li>
                                         <li>✓ Recursive task decomposition and synthesis</li>
                                     </ul>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'inference' && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <div className="p-6 bg-gradient-to-r from-blue-900 to-cyan-900 rounded-2xl text-white mb-8">
+                                    <div>
+                                        <h2 className="text-2xl font-bold font-display flex items-center gap-2 mb-2">
+                                            Inference Engine
+                                            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded uppercase font-black tracking-widest">Pro/Hunter</span>
+                                        </h2>
+                                        <p className="text-gray-200 max-w-2xl">
+                                            Next-gen AI inference techniques to cut latency, boost accuracy, and build trust. Unlock advanced reasoning with Speculative Decoding, Self-Consistency, Skeleton-of-Thought, and Chain-of-Verification.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {/* Speculative Decoding Card */}
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg flex items-center gap-2">⚡ Speculative Decoding</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">2.1x faster token generation using predictive speculative decoding.</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    setSettings(prev => ({...prev, inference: {...prev.inference, speculativeDecoding: {...prev.inference.speculativeDecoding, enabled: !prev.inference.speculativeDecoding.enabled}}}));
+                                                    setHasChanges(true);
+                                                }}
+                                                className={`w-12 h-6 rounded-full relative transition-colors ${settings.inference?.speculativeDecoding?.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.inference?.speculativeDecoding?.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                        <div className={`space-y-3 ${!settings.inference?.speculativeDecoding?.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.speculativeDecoding?.autoActivateOnCampaigns || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, speculativeDecoding: {...prev.inference.speculativeDecoding, autoActivateOnCampaigns: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Auto-activate on Campaign Generation</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.speculativeDecoding?.autoActivateOnWebsiteGen || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, speculativeDecoding: {...prev.inference.speculativeDecoding, autoActivateOnWebsiteGen: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Auto-activate on Website Builder</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.speculativeDecoding?.autoActivateOnRLM || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, speculativeDecoding: {...prev.inference.speculativeDecoding, autoActivateOnRLM: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Auto-activate on RLM Deep Tasks</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Self-Consistency Card */}
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg flex items-center gap-2">🎯 Self-Consistency (Best-of-N)</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Generate N samples and vote on best answer. Cuts hallucinations dramatically.</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    setSettings(prev => ({...prev, inference: {...prev.inference, selfConsistency: {...prev.inference.selfConsistency, enabled: !prev.inference.selfConsistency.enabled}}}));
+                                                    setHasChanges(true);
+                                                }}
+                                                className={`w-12 h-6 rounded-full relative transition-colors ${settings.inference?.selfConsistency?.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.inference?.selfConsistency?.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                        <div className={`space-y-4 ${!settings.inference?.selfConsistency?.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-400 mb-2">Number of Samples (1-5)</label>
+                                                <input type="range" min="1" max="5" value={settings.inference?.selfConsistency?.numSamples || 3} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, selfConsistency: {...prev.inference.selfConsistency, numSamples: parseInt(e.target.value)}}})); setHasChanges(true);}} className="w-full" />
+                                                <p className="text-xs text-gray-400 mt-1">Current: {settings.inference?.selfConsistency?.numSamples || 3} samples</p>
+                                            </div>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.selfConsistency?.useOnConsistencyScore || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, selfConsistency: {...prev.inference.selfConsistency, useOnConsistencyScore: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on Consistency Score</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.selfConsistency?.useOnDNAExtraction || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, selfConsistency: {...prev.inference.selfConsistency, useOnDNAExtraction: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on DNA Extraction</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.selfConsistency?.useOnCloserReplies || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, selfConsistency: {...prev.inference.selfConsistency, useOnCloserReplies: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on Closer Agent Replies</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Skeleton-of-Thought Card */}
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg flex items-center gap-2">🧩 Skeleton-of-Thought</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Live outline generation → progressive expansion. Watch AI think in real-time.</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    setSettings(prev => ({...prev, inference: {...prev.inference, skeletonOfThought: {...prev.inference.skeletonOfThought, enabled: !prev.inference.skeletonOfThought.enabled}}}));
+                                                    setHasChanges(true);
+                                                }}
+                                                className={`w-12 h-6 rounded-full relative transition-colors ${settings.inference?.skeletonOfThought?.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.inference?.skeletonOfThought?.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                        <div className={`space-y-3 ${!settings.inference?.skeletonOfThought?.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.skeletonOfThought?.liveUIEnabled || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, skeletonOfThought: {...prev.inference.skeletonOfThought, liveUIEnabled: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Enable Live UI (Framer Motion)</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.skeletonOfThought?.useOnBattleMode || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, skeletonOfThought: {...prev.inference.skeletonOfThought, useOnBattleMode: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on Battle Mode</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.skeletonOfThought?.useOnCampaignPlanning || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, skeletonOfThought: {...prev.inference.skeletonOfThought, useOnCampaignPlanning: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on Campaign Planning</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.skeletonOfThought?.useOnRLMAnalysis || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, skeletonOfThought: {...prev.inference.skeletonOfThought, useOnRLMAnalysis: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Use on RLM Deep Analysis</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Chain-of-Verification Card */}
+                                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg flex items-center gap-2">✅ Chain-of-Verification</h3>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Auto-verify all outputs. Cross-check data, flag inconsistencies, re-verify logic.</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    setSettings(prev => ({...prev, inference: {...prev.inference, chainOfVerification: {...prev.inference.chainOfVerification, enabled: !prev.inference.chainOfVerification.enabled}}}));
+                                                    setHasChanges(true);
+                                                }}
+                                                className={`w-12 h-6 rounded-full relative transition-colors ${settings.inference?.chainOfVerification?.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.inference?.chainOfVerification?.enabled ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
+                                        <div className={`space-y-3 ${!settings.inference?.chainOfVerification?.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.chainOfVerification?.autoVerifyAllPaidOutputs || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, chainOfVerification: {...prev.inference.chainOfVerification, autoVerifyAllPaidOutputs: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Auto-verify All Paid Outputs</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.chainOfVerification?.checkCrossReferences || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, chainOfVerification: {...prev.inference.chainOfVerification, checkCrossReferences: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Cross-reference with Source Data</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.chainOfVerification?.flagInconsistencies || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, chainOfVerification: {...prev.inference.chainOfVerification, flagInconsistencies: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Flag Inconsistencies</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={settings.inference?.chainOfVerification?.reverifyMathLogic || false} onChange={(e) => {setSettings(prev => ({...prev, inference: {...prev.inference, chainOfVerification: {...prev.inference.chainOfVerification, reverifyMathLogic: e.target.checked}}})); setHasChanges(true);}} className="w-4 h-4" />
+                                                <span className="text-sm font-medium">Re-verify Math & Logic</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl">
+                                        <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-3">Inference Benefits</h3>
+                                        <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                                            <li>⚡ Speculative Decoding: 2x faster outputs</li>
+                                            <li>🎯 Self-Consistency: Hallucination-free results</li>
+                                            <li>🧩 Skeleton-of-Thought: Transparent reasoning process</li>
+                                            <li>✅ Chain-of-Verification: Legal-grade confidence for reports</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}

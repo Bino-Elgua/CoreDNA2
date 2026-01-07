@@ -1,4 +1,5 @@
 import { BrandDNA, LeadProfile, CampaignAsset, SavedCampaign } from '../types';
+import { workflowProviderManager } from './workflowProvider';
 
 export interface WorkflowExecutionRequest {
     workflowId: string;
@@ -309,6 +310,13 @@ class N8nWorkflowService {
      */
     isAvailable(): boolean {
         return this.isHealthy;
+    }
+
+    /**
+     * Use configured workflow provider (n8n, Make, Zapier, or custom)
+     */
+    getProvider() {
+        return workflowProviderManager.getProvider();
     }
 }
 

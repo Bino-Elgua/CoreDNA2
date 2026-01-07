@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import n8nService from '../services/n8nService';
 import { getAllWorkflows, getWorkflowById } from '../services/workflowConfigs';
+import { workflowProviderManager, WorkflowProviderConfig } from '../services/workflowProvider';
 import { useNavigate } from 'react-router-dom';
 
 interface WorkflowStatus {
@@ -19,11 +21,13 @@ const AutomationsPage: React.FC = () => {
     const [isHealthy, setIsHealthy] = useState(false);
     const [selectedWorkflow, setSelectedWorkflow] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const provider = workflowProviderManager.getProvider();
 
     useEffect(() => {
-        // Check n8n health on mount
+        // Check health on mount
         const checkHealth = async () => {
-            const health = await n8nService.checkHealth();
+            const health = await provider.checkHealth();
             setIsHealthy(health.status !== 'offline');
             
             // Initialize workflow statuses
@@ -37,7 +41,9 @@ const AutomationsPage: React.FC = () => {
         };
 
         checkHealth();
-    }, [workflows]);
+    }, [workflows, provider]);
+
+
 
     const handleViewWorkflow = async (workflowId: string) => {
         const config = getWorkflowById(workflowId);
@@ -45,17 +51,41 @@ const AutomationsPage: React.FC = () => {
     };
 
     const handleEditWorkflow = (workflowId: string) => {
-        // Open n8n edit UI in new tab
-        window.open(`${n8nService.getEmbedUrl()}/${workflowId}`, '_blank');
+        if (!isHealthy) {
+            alert(`${provider.getProviderName()} is not available. Please configure it in Settings.`);
+            return;
+        }
+
+        setActionLoading(`edit-${workflowId}`);
+        try {
+            const editUrl = provider.getEditUrl(workflowId);
+            window.open(editUrl, '_blank');
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     const handleDuplicateWorkflow = async (workflowId: string) => {
-        // Prompt for new name
-        const newName = prompt('Enter name for duplicated workflow:');
-        if (!newName) return;
-        
-        alert(`Workflow duplicated as "${newName}". You can edit it in n8n.`);
-        // User would manage this in the n8n UI
+        const workflow = workflows.find(w => w.id === workflowId);
+        if (!workflow) return;
+
+        if (!isHealthy) {
+            alert(`${provider.getProviderName()} is not configured or unavailable.\n\nGo to Settings → Workflow to configure it.`);
+            return;
+        }
+
+        const newName = prompt(`Enter name for duplicated "${workflow.name}":`, `${workflow.name} (Copy)`);
+        if (!newName || newName.trim() === '') return;
+
+        setActionLoading(`clone-${workflowId}`);
+        try {
+            const providerName = provider.getProviderName();
+            alert(`To duplicate this workflow in ${providerName}:\n\n1. The editor will open\n2. Use the platform's duplicate/clone option\n3. Rename it to "${newName}"\n\nThe editor will open in a new tab.`);
+            const editUrl = provider.getEditUrl(workflowId);
+            window.open(editUrl, '_blank');
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     if (loading) {
@@ -68,7 +98,7 @@ const AutomationsPage: React.FC = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 pb-20">
+        <div className="w-full max-w-full overflow-hidden px-4 py-8 pb-20">
             <button 
                 onClick={() => navigate(-1)} 
                 className="flex items-center gap-2 text-sm text-gray-500 hover:text-dna-primary mb-6 transition-colors font-medium group"
@@ -77,16 +107,27 @@ const AutomationsPage: React.FC = () => {
                 Back
             </button>
 
-            <div className="mb-8">
-                <h1 className="text-4xl font-display font-bold mb-2 text-white">Core DNA Automation Engine</h1>
-                <p className="text-gray-400 text-sm">Advanced: View, duplicate, and customize workflows powering Core DNA</p>
+            <div className="mb-8 max-w-[1400px] mx-auto">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h1 className="text-4xl font-display font-bold mb-2 text-white">Core DNA Automation Engine</h1>
+                        <p className="text-gray-400 text-sm">Advanced: View, duplicate, and customize workflows powering Core DNA</p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors"
+                        title="Configure workflow provider in Settings"
+                    >
+                        ⚙️ Configure Provider
+                    </button>
+                </div>
             </div>
 
             {/* Health Status */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-6 rounded-2xl border mb-8 flex items-center justify-between ${
+                className={`p-6 rounded-2xl border mb-8 flex items-center justify-between max-w-[1400px] mx-auto ${
                     isHealthy
                         ? 'bg-green-900/20 border-green-700 text-green-400'
                         : 'bg-red-900/20 border-red-700 text-red-400'
@@ -94,9 +135,14 @@ const AutomationsPage: React.FC = () => {
             >
                 <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${isHealthy ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                    <span className="font-bold">
-                        {isHealthy ? 'n8n Engine Active' : 'n8n Engine Offline — Core DNA running in standard mode'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                        <span className="font-bold">
+                            {isHealthy ? `${provider.getProviderName()} Connected` : `${provider.getProviderName()} Unavailable`}
+                        </span>
+                        <span className="text-xs opacity-75">
+                            {isHealthy ? `Running workflows via ${provider.getProviderName()}` : 'Core DNA running in standard mode'}
+                        </span>
+                    </div>
                 </div>
                 <span className="text-xs uppercase tracking-widest font-black">
                     {isHealthy ? 'LIVE' : 'FALLBACK'}
@@ -104,7 +150,7 @@ const AutomationsPage: React.FC = () => {
             </motion.div>
 
             {/* Workflows Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-[1400px] mx-auto">
                 {workflows.map((workflow, idx) => (
                     <motion.div
                         key={workflow.id}
@@ -165,28 +211,39 @@ const AutomationsPage: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => handleEditWorkflow(workflow.id)}
-                                className="flex-1 px-4 py-2 bg-dna-primary hover:bg-dna-primary/90 text-white font-bold text-sm rounded-lg transition-colors"
+                                disabled={!isHealthy || actionLoading === `edit-${workflow.id}`}
+                                className={`flex-1 px-4 py-2 font-bold text-sm rounded-lg transition-all ${
+                                    !isHealthy
+                                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                                        : 'bg-dna-primary hover:bg-dna-primary/90 text-white'
+                                } ${actionLoading === `edit-${workflow.id}` ? 'opacity-75' : ''}`}
+                                title={!isHealthy ? 'n8n not running' : ''}
                             >
-                                Edit in n8n
+                                {actionLoading === `edit-${workflow.id}` ? '⏳ Opening...' : 'Edit in n8n'}
                             </button>
                             <button
                                 onClick={() => handleDuplicateWorkflow(workflow.id)}
-                                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold text-sm rounded-lg transition-colors"
-                                title="Duplicate this workflow"
+                                disabled={!isHealthy || actionLoading === `clone-${workflow.id}`}
+                                className={`flex-1 px-4 py-2 font-bold text-sm rounded-lg transition-all ${
+                                    !isHealthy
+                                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                                } ${actionLoading === `clone-${workflow.id}` ? 'opacity-75' : ''}`}
+                                title={!isHealthy ? 'n8n not running - required to clone' : 'Duplicate this workflow'}
                             >
-                                Clone
+                                {actionLoading === `clone-${workflow.id}` ? '⏳ Cloning...' : 'Clone'}
                             </button>
                         </div>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Workflow Details Modal */}
-            {selectedWorkflow && (
+            {/* Workflow Details Modal - Rendered as Portal */}
+            {selectedWorkflow && createPortal(
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
                     onClick={() => setSelectedWorkflow(null)}
                 >
                     <motion.div
@@ -234,7 +291,8 @@ const AutomationsPage: React.FC = () => {
                             Close
                         </button>
                     </motion.div>
-                </motion.div>
+                </motion.div>,
+                document.body
             )}
 
             {/* Info Box */}
@@ -242,7 +300,7 @@ const AutomationsPage: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-12 p-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl"
+                className="mt-12 p-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl max-w-[1400px] mx-auto"
             >
                 <h3 className="font-bold text-purple-900 dark:text-purple-300 mb-3">Advanced Mode — For Power Users</h3>
                 <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed mb-4">

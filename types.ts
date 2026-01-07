@@ -172,6 +172,36 @@ export interface RLMConfig {
     contextWindow: number;
 }
 
+export interface InferenceEngineConfig {
+    speculativeDecoding: {
+        enabled: boolean;
+        autoActivateOnCampaigns: boolean;
+        autoActivateOnWebsiteGen: boolean;
+        autoActivateOnRLM: boolean;
+    };
+    selfConsistency: {
+        enabled: boolean;
+        numSamples: number; // 1-5, Hunter tier only
+        useOnConsistencyScore: boolean;
+        useOnDNAExtraction: boolean;
+        useOnCloserReplies: boolean;
+    };
+    skeletonOfThought: {
+        enabled: boolean;
+        liveUIEnabled: boolean;
+        useOnBattleMode: boolean;
+        useOnCampaignPlanning: boolean;
+        useOnRLMAnalysis: boolean;
+    };
+    chainOfVerification: {
+        enabled: boolean;
+        autoVerifyAllPaidOutputs: boolean;
+        checkCrossReferences: boolean;
+        flagInconsistencies: boolean;
+        reverifyMathLogic: boolean;
+    };
+}
+
 export interface GlobalSettings {
     theme: 'system' | 'light' | 'dark';
     dataCollection: boolean;
@@ -180,6 +210,7 @@ export interface GlobalSettings {
     activeVoice: VoiceProviderId;
     activeWorkflow: WorkflowProviderId;
     rlm: RLMConfig;
+    inference: InferenceEngineConfig;
     whiteLabel?: { enabled: boolean; agencyName: string; logoUrl: string; };
     llms: Record<string, ProviderConfig>;
     image: Record<string, ProviderConfig>;
