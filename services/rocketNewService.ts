@@ -178,7 +178,7 @@ PAGE STRUCTURE:
 2. About Page - Brand story narrative, core values, team introduction
 3. Services Page - Feature 5-6 services based on strengths and expertise
 4. Portfolio Page - Showcase projects/case studies with before/after if available
-5. Contact Page - Contact form, Calendly embed, contact information${blogNote}
+5. Contact Page - Contact form, Calendly embed, contact information
 
 SONIC AGENT (AI Chat Widget):
 - Enabled: ${!!dna.sonicIdentity}
