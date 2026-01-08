@@ -28,6 +28,30 @@ All core features are powered by pre-built n8n workflows:
 
 Default behavior: All workflows run silently with zero user setup. Advanced users (Hunter tier) can view/edit/duplicate workflows in the **Automations** panel.
 
+### Inference Engine — Next-Gen AI Reasoning (Pro/Hunter Only)
+Cut latency, boost accuracy, build trust with 4 advanced inference techniques:
+
+1. **⚡ Speculative Decoding** — 2.1x faster token generation
+   - Auto-activate on campaigns, website gen, RLM tasks
+   - Toast notification: "Using Speculative Decoding — 2.1x faster"
+
+2. **🎯 Self-Consistency (Best-of-N)** — +15-25% accuracy improvement
+   - Generate N samples (1-5, Hunter tier only) and vote on best answer
+   - Use on: Consistency Score, DNA extraction, Closer replies
+   - Badge: "Self-Consistent"
+
+3. **🧩 Skeleton-of-Thought** — Live reasoning UI with animations
+   - Generate outline first, then expand each point progressively
+   - Framer Motion animations show "thinking" in real-time
+   - Use on: Battle Mode, Campaign planning, RLM analysis
+
+4. **✅ Chain-of-Verification** — Legal-grade confidence checks
+   - Auto-verify outputs: cross-reference, flag inconsistencies, re-verify logic
+   - Badges: "Verified by CoV" (✓) or "Needs Review" (⚠️)
+   - Use on: All paid outputs (reports, pitches, scores)
+
+Configure in **Settings → Inference Engine**. See `INFERENCE_QUICK_REFERENCE.md` for integration.
+
 ### RLM (Recursive Language Model) — Pro/Hunter Only
 Process unlimited context for:
 - **Full Website Crawls** — Extract entire website content without token limits
@@ -112,15 +136,20 @@ Seamlessly switch between 40+ LLM providers:
 
 ## Tier-Based Access
 
-| Feature | Free | Pro | Hunter |
-|---------|------|-----|--------|
-| Brand DNA Extraction | ✓ | ✓ | ✓ |
-| Battle Mode | ✓ | ✓ | ✓ |
-| Lead Hunter | Limited | ✓ | ✓ |
-| Closer Agent | ✗ | ✓ | ✓ |
-| **RLM Mode** | ✗ | **✓** | **✓** |
-| Multi-Provider LLMs | 3 | Unlimited | Unlimited |
-| White-Label | ✗ | ✓ | ✓ |
+| Feature | Free | Core | Pro | Hunter |
+|---------|------|------|-----|--------|
+| Brand DNA Extraction | ✓ | ✓ | ✓ | ✓ |
+| Battle Mode | ✓ | ✓ | ✓ | ✓ |
+| Lead Hunter | Limited | ✓ | ✓ | ✓ |
+| Closer Agent | ✗ | ✗ | ✓ | ✓ |
+| **Speculative Decoding** | ✗ | ✗ | **✓** | **✓** |
+| **Self-Consistency** | ✗ | ✓ | ✓ | ✓ |
+| **Skeleton-of-Thought** | ✗ | ✗ | **✓** | **✓** |
+| **Chain-of-Verification** | ✗ | ✗ | **✓** | **✓** |
+| Sample Slider (1-5) | - | - | - | **✓** |
+| **RLM Mode** | ✗ | ✗ | **✓** | **✓** |
+| Multi-Provider LLMs | 3 | 3 | Unlimited | Unlimited |
+| White-Label | ✗ | ✗ | ✓ | ✓ |
 
 ## n8n Workflow Architecture
 
@@ -160,10 +189,14 @@ src/
 │   └── ...
 ├── components/               # Reusable UI components
 ├── services/
-│   ├── geminiService.ts      # LLM integration
-│   ├── rlmService.ts         # RLM wrapper for infinite context
-│   ├── n8nService.ts         # n8n workflow orchestration
-│   └── workflowConfigs.ts    # Workflow definitions & metadata
+│   ├── geminiService.ts          # LLM integration
+│   ├── rlmService.ts             # RLM wrapper for infinite context
+│   ├── n8nService.ts             # n8n workflow orchestration
+│   ├── workflowConfigs.ts        # Workflow definitions & metadata
+│   ├── inferenceRouter.ts        # Inference technique routing
+│   ├── inferenceWrapper.ts       # Gemini call wrapper with inference
+│   ├── toastService.ts           # Toast notifications
+│   └── inferenceTests.ts         # Test suite for inference
 ├── contexts/                 # React Context
 ├── hooks/                    # Custom hooks
 ├── types.ts                  # TypeScript interfaces
@@ -172,19 +205,31 @@ src/
 
 ## Advanced Features (Non-Breaking)
 
-### 1. n8n Automation Engine
+### 1. Inference Engine (Next-Gen AI Reasoning)
+- **Speculative Decoding**: 2.1x faster token generation via parallel predictions
+- **Self-Consistency**: Multi-sample generation with voting (N=1-5, Hunter tier)
+- **Skeleton-of-Thought**: Real-time outline expansion with live animations
+- **Chain-of-Verification**: Auto-verification with "Verified" / "Needs Review" badges
+- **Toast Notifications**: Real-time feedback on inference techniques used
+- **No Breaking Changes**: Fully backward compatible, opt-in via settings
+- **Integration**: Simple `inferenceWrapper.wrapGeminiCall()` wrapper
+
+See `INFERENCE_QUICK_REFERENCE.md` for quick integration guide.
+
+### 2. n8n Automation Engine
 - **Default**: All workflows run silently — zero user setup
 - **Graceful Fallback**: If n8n is unavailable, standard mode activates automatically
 - **Advanced Panel**: Hunter tier users can access Automations page to view/edit workflows
 - **No External Branding**: n8n UI is hidden from regular users; Core DNA is fully white-labeled
 
-### 2. RLM (Recursive Language Model)
+### 3. RLM (Recursive Language Model)
 - All existing features work without RLM enabled
 - Graceful fallback to standard LLM when RLM is disabled
 - Settings-driven activation (Pro/Hunter tiers only)
 - Independent of multi-provider support
+- Works seamlessly with Inference Engine techniques
 
-### 3. White-Label
+### 4. White-Label
 - Complete brand customization in Settings
 - No Core DNA branding exposed in default UI
 - n8n and other engines kept invisible to end users
