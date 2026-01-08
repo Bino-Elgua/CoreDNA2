@@ -1,10 +1,12 @@
 <div align="center">
 
-<img width="1200" height="475" alt="CoreDNA Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# 🧬 CoreDNA
 
-# CoreDNA — Enterprise AI Brand Intelligence Platform
+## Enterprise AI Brand Intelligence Platform
 
-**Proprietary AI-powered brand analysis and sales acceleration platform.**
+**Extract your brand's essence. Generate unlimited assets.**
+
+**AI-powered brand analysis, campaign generation, and marketing automation.**
 
 > ⚠️ **PRIVATE REPOSITORY**  
 > This repository is confidential and restricted to authorized CoreDNA team members only.
