@@ -10,6 +10,17 @@ Comprehensive AI-powered brand analysis, competitive intelligence, and sales acc
 
 **Live Demo:** https://ai.studio/apps/drive/1oK7GGLdvV3E15WgVsDL3I3M486CfJT2u
 
+## Quick Start: 4 Tiers, One Platform
+
+- **FREE** — Try Core DNA with 3 extractions/month
+- **PRO** ($49/mo) — Unlimited extractions + all 70+ AI providers
+- **HUNTER** ($149/mo) — Pro + workflow automation + team (3 members)
+- **AGENCY** (Custom) — Everything + unlimited team + white-label
+
+👉 **[View Full Pricing →](./src/pages/PricingPage.tsx)** | **[Tier System Docs →](./TIER_SYSTEM_INDEX.md)**
+
+---
+
 ## Features
 
 ### Core Intelligence
@@ -132,22 +143,32 @@ Seamlessly switch between 6 primary + optional LLM providers:
 | **Visualization** | Recharts (radar, bar charts) |
 | **Animation** | Framer Motion |
 
-## Tier-Based Access
+## 4-Tier Subscription System
 
-| Feature | Free | Core | Pro | Hunter |
-|---------|------|------|-----|--------|
-| Brand DNA Extraction | ✓ | ✓ | ✓ | ✓ |
+**Unified pricing for individuals, agencies, and enterprises:**
+
+| Feature | Free | Pro | Hunter | Agency |
+|---------|------|-----|--------|--------|
+| **Price** | $0 | $49/mo | $149/mo | Custom |
+| Brand DNA Extraction | 3/mo | ∞ | ∞ | ∞ |
 | Battle Mode | ✓ | ✓ | ✓ | ✓ |
 | Lead Hunter | ✗ | ✓ | ✓ | ✓ |
-| Closer Agent | ✗ | ✗ | ✓ | ✓ |
-| **Speculative Decoding** | ✗ | ✗ | **✓** | **✓** |
-| **Self-Consistency** | ✗ | ✓ | ✓ | ✓ |
-| **Skeleton-of-Thought** | ✗ | ✗ | **✓** | **✓** |
-| **Chain-of-Verification** | ✗ | ✗ | **✓** | **✓** |
-| Sample Slider (1-5) | - | - | - | **✓** |
-| **RLM Mode** | ✗ | ✗ | **✓** | **✓** |
-| Multi-Provider LLMs | 3 | 6 | 6+ | 6+ |
-| White-Label | ✗ | ✗ | ✓ | ✓ |
+| Closer Agent | ✗ | ✓ | ✓ | ✓ |
+| **All 4 Inference Techniques** | ✗ | **✓** | **✓** | **✓** |
+| **RLM Mode** (Infinite Context) | ✗ | **✓** | **✓** | **✓** |
+| 4 Core Workflows | ✗ | **✓** | **✓** | **✓** + Auto-Post |
+| Workflow Editing | ✗ | ✗ | **✓** | **✓** |
+| Auto-Post Scheduler | ✗ | ✗ | **✓** | **✓** |
+| Website Builder | Preview | Full | Full | Full |
+| LLM Providers | 2 | All 30+ | All 30+ | All 30+ |
+| Image Providers | 1 | All 20+ | All 20+ | All 20+ |
+| Voice Providers | 1 | All 15+ | All 15+ | All 15+ |
+| Team Members | 1 | 1 | 3 | Unlimited |
+| White-Label | ✗ | ✗ | ✗ | **✓** |
+| Bulk Extraction | ✗ | ✗ | ✗ | **✓** |
+| Support | Community | Email | Priority | Dedicated |
+
+**See `/pricing` for full comparison table and feature details.**
 
 ## n8n Workflow Architecture
 
@@ -275,3 +296,37 @@ See `INFERENCE_QUICK_REFERENCE.md` for quick integration guide.
 Built for agencies, consultants, and sales teams who need deep brand and market intelligence at scale. 
 
 **Now with a fully autonomous workflow engine that runs silently behind the scenes.**
+
+---
+
+## 💳 Subscription & Tier System
+
+Core DNA uses a unified 4-tier subscription model designed to scale from individual users to enterprises:
+
+### Implementation Details
+- **Free Tier**: 3 DNA extractions/month, 2 LLM providers, basic features
+- **Pro Tier** ($49/mo): Unlimited extractions, all 30+ LLM providers, inference engine, RLM mode
+- **Hunter Tier** ($149/mo): Pro features + workflow editing, auto-post scheduler, team management (3 members)
+- **Agency Tier** (Custom): Unlimited everything, white-label branding, bulk extraction, dedicated support
+
+### Tier System Architecture
+- **Database**: Supabase with RLS (Row-Level Security) for data isolation
+- **Monthly Tracking**: Automatic usage counters with auto-reset on month change
+- **Feature Gating**: Built-in tier checks for extractions, workflows, and advanced features
+- **Graceful Degradation**: Limited features disabled with upgrade prompts, not errors
+- **Team Support**: Agency tier includes unlimited team members with role-based access
+
+### Key Files
+- `src/constants/tiers.ts` — Tier definitions and feature limits
+- `src/services/tierService.ts` — Tier enforcement and usage tracking
+- `src/pages/PricingPage.tsx` — Public pricing page with 4 tiers
+- `supabase/migrations/04_add_tier_system.sql` — Database schema
+
+### Documentation
+- **[TIER_QUICK_START.md](./TIER_QUICK_START.md)** — 5-minute setup guide
+- **[TIER_SYSTEM_IMPLEMENTATION.md](./TIER_SYSTEM_IMPLEMENTATION.md)** — Complete technical docs
+- **[TIER_INTEGRATION_EXAMPLES.md](./TIER_INTEGRATION_EXAMPLES.md)** — 7 code examples
+- **[TIER_DEPLOYMENT_CHECKLIST.md](./TIER_DEPLOYMENT_CHECKLIST.md)** — Deployment verification
+- **[TIER_SYSTEM_INDEX.md](./TIER_SYSTEM_INDEX.md)** — Navigation guide
+
+---

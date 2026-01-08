@@ -6,6 +6,7 @@ import { siteGeneratorService, GeneratedSite } from '../services/siteGeneratorSe
 import { rocketNewService, RocketNewDeploymentResult } from '../services/rocketNewService';
 import { firebaseDeploymentService } from '../services/firebaseDeploymentService';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const DEPLOYMENT_STEPS = [
     { id: 1, label: 'Analyzing DNA', icon: '🧬' },
@@ -28,10 +29,11 @@ interface DeploymentState {
 
 const SiteBuilderPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [profiles, setProfiles] = useState<BrandDNA[]>([]);
     const [selectedDnaId, setSelectedDnaId] = useState('');
     const [settings, setSettings] = useState<GlobalSettings | null>(null);
-    const [userTier, setUserTier] = useState<'free' | 'core' | 'pro' | 'hunter'>('free');
+    const [userTier, setUserTier] = useState<'free' | 'pro' | 'hunter' | 'agency'>('free');
 
     const [deployment, setDeployment] = useState<DeploymentState>({
         isDeploying: false,
@@ -64,8 +66,13 @@ const SiteBuilderPage: React.FC = () => {
             } catch (e) {}
         }
 
-        const storedTier = localStorage.getItem('user_tier') || 'free';
-        setUserTier(storedTier as any);
+        // Use auth context user tier, fallback to localStorage
+        if (user?.tier) {
+            setUserTier(user.tier);
+        } else {
+            const storedTier = localStorage.getItem('user_tier') || 'free';
+            setUserTier(storedTier as any);
+        }
 
         const storedSites = localStorage.getItem('core_dna_deployed_sites');
         if (storedSites) {
@@ -73,10 +80,10 @@ const SiteBuilderPage: React.FC = () => {
                 setDeployedSites(JSON.parse(storedSites));
             } catch (e) {}
         }
-    }, []);
+    }, [user]);
 
     const selectedDna = profiles.find(p => p.id === selectedDnaId);
-    const isPaidTier = userTier === 'pro' || userTier === 'hunter';
+    const isPaidTier = userTier === 'pro' || userTier === 'hunter' || userTier === 'agency';
     const hasRocketKey = !!localStorage.getItem('rocket_new_api_key');
     const canDeployLive = isPaidTier && hasRocketKey;
 

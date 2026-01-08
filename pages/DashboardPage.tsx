@@ -7,6 +7,7 @@ import { BrandDNA, SavedCampaign } from '../types';
 import { FADE_IN_UP } from '../constants';
 import { AnalyticsSection } from '../components/AnalyticsSection';
 import TrendPulse from '../components/TrendPulse';
+import UserProfileCard from '../components/UserProfileCard';
 
 const DashboardPage: React.FC = () => {
   const { user, login } = useAuth();
@@ -14,7 +15,7 @@ const DashboardPage: React.FC = () => {
   const [profiles, setProfiles] = useState<BrandDNA[]>([]);
   const [campaigns, setCampaigns] = useState<SavedCampaign[]>([]);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
-  const [activeTab, setActiveTab] = useState<'portfolios' | 'analytics'>('portfolios');
+  const [activeTab, setActiveTab] = useState<'portfolios' | 'analytics' | 'profile'>('portfolios');
 
   useEffect(() => {
     if (user) {
@@ -109,9 +110,9 @@ const DashboardPage: React.FC = () => {
                     <button 
                         className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg font-bold text-sm cursor-not-allowed" 
                         title="Upgrade to Agency Tier"
-                        onClick={() => alert("Bulk Extract is available for Agency Tier only.")}
+                        onClick={() => alert("Bulk Extract is available for Agency Tier only (Enterprise).")}
                     >
-                        Bulk Extract <span className="text-xs uppercase ml-1 border border-gray-300 px-1 rounded">Agency</span>
+                        Bulk Extract <span className="text-xs uppercase ml-1 border border-gray-300 px-1 rounded">Enterprise</span>
                     </button>
                 )}
 
@@ -143,6 +144,16 @@ const DashboardPage: React.FC = () => {
                 }`}
             >
                 Performance Metrics
+            </button>
+            <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-6 py-3 text-sm font-bold uppercase tracking-wider transition-all border-b-2 ${
+                    activeTab === 'profile' 
+                    ? 'border-dna-primary text-dna-primary' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+            >
+                My Profile
             </button>
         </div>
 
@@ -255,6 +266,17 @@ const DashboardPage: React.FC = () => {
                     </div>
                     {/* Analytics Section is now always visible when tab is active */}
                     <AnalyticsSection profiles={profiles} campaigns={campaigns} />
+                </motion.div>
+            )}
+
+            {activeTab === 'profile' && user && (
+                <motion.div
+                    key="profile"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                >
+                    <UserProfileCard user={user} />
                 </motion.div>
             )}
         </AnimatePresence>

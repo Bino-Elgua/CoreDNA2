@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlobalSettings, LLMProviderId, ImageProviderId, VoiceProviderId, WorkflowProviderId } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { workflowProviderManager, WorkflowProviderConfig } from '../services/workflowProvider';
 import { getSettings, saveSettings } from '../services/settingsService';
 import HealthCheckInput from '../components/HealthCheckInput';
@@ -121,97 +122,102 @@ const INITIAL_SETTINGS: GlobalSettings = {
 
 const PROVIDER_META: Record<string, { title: string, icon: string, fields: string[], getKeyUrl?: string }> = {
     // LLMs
-    google: { title: 'Google Gemini', icon: 'G', fields: ['apiKey'], getKeyUrl: 'https://aistudio.google.com/app/apikey' },
-    openai: { title: 'OpenAI', icon: 'O', fields: ['apiKey', 'defaultModel'], getKeyUrl: 'https://platform.openai.com/api-keys' },
-    anthropic: { title: 'Anthropic', icon: 'C', fields: ['apiKey', 'defaultModel'], getKeyUrl: 'https://console.anthropic.com/settings/keys' },
-    mistral: { title: 'Mistral AI', icon: 'M', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://console.mistral.ai/api-keys/' },
-    meta_llama: { title: 'Meta Llama 3', icon: '🦙', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://www.llama.com/' }, // NEW
-    xai: { title: 'xAI (Grok)', icon: 'X', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://console.x.ai/' },
-    deepseek: { title: 'DeepSeek', icon: 'D', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://platform.deepseek.com/api_keys' },
-    groq: { title: 'Groq', icon: 'Gq', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://console.groq.com/keys' },
-    together: { title: 'Together AI', icon: 'T', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://api.together.xyz/settings/api-keys' },
-    openrouter: { title: 'OpenRouter', icon: 'OR', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://openrouter.ai/keys' },
-    perplexity: { title: 'Perplexity', icon: 'P', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://www.perplexity.ai/settings/api' },
-    qwen: { title: 'Qwen (Alibaba)', icon: 'Q', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://bailian.console.aliyun.com/' },
-    cohere: { title: 'Cohere', icon: 'Co', fields: ['apiKey'], getKeyUrl: 'https://dashboard.cohere.com/api-keys' },
-    microsoft: { title: 'Azure OpenAI', icon: 'Az', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://portal.azure.com/' },
-    ollama: { title: 'Ollama (Local)', icon: 'Ol', fields: ['baseUrl', 'defaultModel'], getKeyUrl: 'https://ollama.com/download' },
-    custom_openai: { title: 'Custom / Local', icon: '?', fields: ['baseUrl', 'apiKey'] },
-    sambanova: { title: 'SambaNova', icon: 'SN', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.sambanova.ai/' },
-    cerebras: { title: 'Cerebras', icon: 'Ce', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.cerebras.ai/' },
-    hyperbolic: { title: 'Hyperbolic', icon: 'Hy', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://app.hyperbolic.xyz/' },
-    nebius: { title: 'Nebius', icon: 'Nb', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://studio.nebius.ai/' },
-    aws_bedrock: { title: 'AWS Bedrock', icon: 'AWS', fields: ['apiKey'], getKeyUrl: 'https://console.aws.amazon.com/bedrock/' },
-    friendli: { title: 'Friendli', icon: 'Fr', fields: ['apiKey'], getKeyUrl: 'https://suite.friendli.ai/' },
-    replicate_llm: { title: 'Replicate', icon: 'R', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/account/api-tokens' },
-    minimax: { title: 'MiniMax', icon: 'Mm', fields: ['apiKey'], getKeyUrl: 'https://platform.minimaxi.com/' },
-    hunyuan: { title: 'Hunyuan', icon: 'H', fields: ['apiKey'], getKeyUrl: 'https://cloud.tencent.com/product/hunyuan' },
-    blackbox: { title: 'Blackbox', icon: 'B', fields: ['apiKey'], getKeyUrl: 'https://www.blackbox.ai/' },
-    dify: { title: 'Dify.ai', icon: 'Di', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
-    venice: { title: 'Venice', icon: 'V', fields: ['apiKey'], getKeyUrl: 'https://venice.ai/' },
-    zai: { title: 'Zai', icon: 'Z', fields: ['apiKey'], getKeyUrl: 'https://zai.ai/' },
-    comet: { title: 'Comet', icon: 'Cm', fields: ['apiKey'], getKeyUrl: 'https://www.comet.com/' },
-    huggingface: { title: 'HuggingFace', icon: 'HF', fields: ['apiKey'], getKeyUrl: 'https://huggingface.co/settings/tokens' },
+    google: { title: 'Google Gemini', icon: '🔮', fields: ['apiKey'], getKeyUrl: 'https://aistudio.google.com/app/apikey' },
+    openai: { title: 'OpenAI', icon: '🤖', fields: ['apiKey', 'defaultModel'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    anthropic: { title: 'Anthropic', icon: '🧠', fields: ['apiKey', 'defaultModel'], getKeyUrl: 'https://console.anthropic.com/settings/keys' },
+    mistral: { title: 'Mistral AI', icon: '⚡', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://console.mistral.ai/api-keys/' },
+    meta_llama: { title: 'Meta Llama 3', icon: '🦙', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://www.llama.com/' },
+    xai: { title: 'xAI (Grok)', icon: '🐙', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://console.x.ai/' },
+    deepseek: { title: 'DeepSeek', icon: '🌊', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://platform.deepseek.com/api_keys' },
+    groq: { title: 'Groq', icon: '⚙️', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://console.groq.com/keys' },
+    together: { title: 'Together AI', icon: '🤝', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://api.together.xyz/settings/api-keys' },
+    openrouter: { title: 'OpenRouter', icon: '🛣️', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://openrouter.ai/keys' },
+    perplexity: { title: 'Perplexity', icon: '🔍', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://www.perplexity.ai/settings/api' },
+    qwen: { title: 'Qwen (Alibaba)', icon: '🏮', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://bailian.console.aliyun.com/' },
+    cohere: { title: 'Cohere', icon: '🌀', fields: ['apiKey'], getKeyUrl: 'https://dashboard.cohere.com/api-keys' },
+    microsoft: { title: 'Azure OpenAI', icon: '☁️', fields: ['apiKey', 'baseUrl', 'defaultModel'], getKeyUrl: 'https://portal.azure.com/' },
+    ollama: { title: 'Ollama (Local)', icon: '🖥️', fields: ['baseUrl', 'defaultModel'], getKeyUrl: 'https://ollama.com/download' },
+    custom_openai: { title: 'Custom / Local', icon: '🔧', fields: ['baseUrl', 'apiKey'] },
+    sambanova: { title: 'SambaNova', icon: '🚀', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.sambanova.ai/' },
+    cerebras: { title: 'Cerebras', icon: '🧬', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.cerebras.ai/' },
+    hyperbolic: { title: 'Hyperbolic', icon: '⏱️', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://app.hyperbolic.xyz/' },
+    nebius: { title: 'Nebius', icon: '🌌', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://studio.nebius.ai/' },
+    aws_bedrock: { title: 'AWS Bedrock', icon: '🛏️', fields: ['apiKey'], getKeyUrl: 'https://console.aws.amazon.com/bedrock/' },
+    friendli: { title: 'Friendli', icon: '👥', fields: ['apiKey'], getKeyUrl: 'https://suite.friendli.ai/' },
+    replicate_llm: { title: 'Replicate', icon: '🔁', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/account/api-tokens' },
+    minimax: { title: 'MiniMax', icon: '📦', fields: ['apiKey'], getKeyUrl: 'https://platform.minimaxi.com/' },
+    hunyuan: { title: 'Hunyuan', icon: '🌤️', fields: ['apiKey'], getKeyUrl: 'https://cloud.tencent.com/product/hunyuan' },
+    blackbox: { title: 'Blackbox', icon: '⬛', fields: ['apiKey'], getKeyUrl: 'https://www.blackbox.ai/' },
+    dify: { title: 'Dify.ai', icon: '🎯', fields: ['apiKey', 'baseUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
+    venice: { title: 'Venice', icon: '🌉', fields: ['apiKey'], getKeyUrl: 'https://venice.ai/' },
+    zai: { title: 'Zai', icon: '⚡', fields: ['apiKey'], getKeyUrl: 'https://zai.ai/' },
+    comet: { title: 'Comet', icon: '☄️', fields: ['apiKey'], getKeyUrl: 'https://www.comet.com/' },
+    huggingface: { title: 'HuggingFace', icon: '🤗', fields: ['apiKey'], getKeyUrl: 'https://huggingface.co/settings/tokens' },
 
     // Image
-    stability: { title: 'Stability AI', icon: 'S', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/account/keys' },
-    sd3: { title: 'Stable Diffusion 3', icon: 'SD', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/' }, // NEW
-    openai_dalle_next: { title: 'DALL-E 4 / GPT Image', icon: 'O+', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/' }, // NEW
-    fal_flux: { title: 'Fal.ai (Flux)', icon: 'F', fields: ['apiKey'], getKeyUrl: 'https://fal.ai/dashboard/keys' },
-    midjourney: { title: 'Midjourney', icon: 'Mj', fields: ['apiKey'], getKeyUrl: 'https://www.midjourney.com/account' },
-    runware: { title: 'Runware', icon: 'Rw', fields: ['apiKey'], getKeyUrl: 'https://runware.ai/' },
-    leonardo: { title: 'Leonardo.ai', icon: 'L', fields: ['apiKey'], getKeyUrl: 'https://app.leonardo.ai/api-access' },
-    recraft: { title: 'Recraft', icon: 'Rc', fields: ['apiKey'], getKeyUrl: 'https://www.recraft.ai/' },
-    amazon: { title: 'Amazon Titan', icon: 'Am', fields: ['apiKey'], getKeyUrl: 'https://aws.amazon.com/bedrock/titan/' },
-    adobe: { title: 'Adobe Firefly', icon: 'Ad', fields: ['apiKey'], getKeyUrl: 'https://firefly.adobe.com/' },
-    deepai: { title: 'DeepAI', icon: 'Da', fields: ['apiKey'], getKeyUrl: 'https://deepai.org/dashboard/profile' },
-    replicate: { title: 'Replicate', icon: 'R', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/account/api-tokens' },
-    bria: { title: 'Bria', icon: 'Br', fields: ['apiKey'], getKeyUrl: 'https://bria.ai/' },
-    segmind: { title: 'Segmind', icon: 'Sm', fields: ['apiKey'], getKeyUrl: 'https://www.segmind.com/' },
-    prodia: { title: 'Prodia', icon: 'Pr', fields: ['apiKey'], getKeyUrl: 'https://app.prodia.com/api' },
-    ideogram: { title: 'Ideogram', icon: 'Id', fields: ['apiKey'], getKeyUrl: 'https://ideogram.ai/' },
-    black_forest_labs: { title: 'Black Forest', icon: 'BF', fields: ['apiKey'], getKeyUrl: 'https://blackforestlabs.ai/' },
-    wan: { title: 'Wan', icon: 'W', fields: ['apiKey'], getKeyUrl: 'https://wan.ai/' },
-    hunyuan_image: { title: 'Hunyuan', icon: 'Hi', fields: ['apiKey'], getKeyUrl: 'https://cloud.tencent.com/product/hunyuan' },
+    google: { title: 'Google Images', icon: '🔮', fields: ['apiKey'], getKeyUrl: 'https://aistudio.google.com/app/apikey' },
+    openai: { title: 'DALL-E 3', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    xai: { title: 'xAI Image', icon: '🐙', fields: ['apiKey'], getKeyUrl: 'https://console.x.ai/' },
+    stability: { title: 'Stability AI', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/account/keys' },
+    sd3: { title: 'Stable Diffusion 3', icon: '🖼️', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/' },
+    openai_dalle_next: { title: 'DALL-E 4 / GPT Image', icon: '🎭', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/' },
+    fal_flux: { title: 'Fal.ai (Flux)', icon: '⚡', fields: ['apiKey'], getKeyUrl: 'https://fal.ai/dashboard/keys' },
+    midjourney: { title: 'Midjourney', icon: '✨', fields: ['apiKey'], getKeyUrl: 'https://www.midjourney.com/account' },
+    runware: { title: 'Runware', icon: '🏃', fields: ['apiKey'], getKeyUrl: 'https://runware.ai/' },
+    leonardo: { title: 'Leonardo.ai', icon: '🎬', fields: ['apiKey'], getKeyUrl: 'https://app.leonardo.ai/api-access' },
+    recraft: { title: 'Recraft', icon: '🖌️', fields: ['apiKey'], getKeyUrl: 'https://www.recraft.ai/' },
+    amazon: { title: 'Amazon Titan', icon: '🦾', fields: ['apiKey'], getKeyUrl: 'https://aws.amazon.com/bedrock/titan/' },
+    adobe: { title: 'Adobe Firefly', icon: '🔥', fields: ['apiKey'], getKeyUrl: 'https://firefly.adobe.com/' },
+    deepai: { title: 'DeepAI', icon: '🧠', fields: ['apiKey'], getKeyUrl: 'https://deepai.org/dashboard/profile' },
+    replicate: { title: 'Replicate', icon: '🔁', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/account/api-tokens' },
+    bria: { title: 'Bria', icon: '🌟', fields: ['apiKey'], getKeyUrl: 'https://bria.ai/' },
+    segmind: { title: 'Segmind', icon: '🧩', fields: ['apiKey'], getKeyUrl: 'https://www.segmind.com/' },
+    prodia: { title: 'Prodia', icon: '🎪', fields: ['apiKey'], getKeyUrl: 'https://app.prodia.com/api' },
+    ideogram: { title: 'Ideogram', icon: '💡', fields: ['apiKey'], getKeyUrl: 'https://ideogram.ai/' },
+    black_forest_labs: { title: 'Black Forest', icon: '🌲', fields: ['apiKey'], getKeyUrl: 'https://blackforestlabs.ai/' },
+    wan: { title: 'Wan', icon: '🌊', fields: ['apiKey'], getKeyUrl: 'https://wan.ai/' },
+    hunyuan_image: { title: 'Hunyuan', icon: '🌤️', fields: ['apiKey'], getKeyUrl: 'https://cloud.tencent.com/product/hunyuan' },
 
     // Voice
-    elevenlabs: { title: 'ElevenLabs', icon: '11', fields: ['apiKey'], getKeyUrl: 'https://elevenlabs.io/app/settings/api-keys' },
-    playht: { title: 'PlayHT', icon: 'Ph', fields: ['apiKey'], getKeyUrl: 'https://play.ht/studio/api-access' },
-    cartesia: { title: 'Cartesia', icon: 'Ca', fields: ['apiKey'], getKeyUrl: 'https://play.cartesia.ai/' },
-    resemble: { title: 'Resemble AI', icon: 'Rs', fields: ['apiKey'], getKeyUrl: 'https://www.resemble.ai/' }, // NEW
-    murf: { title: 'Murf AI', icon: 'Mu', fields: ['apiKey'], getKeyUrl: 'https://murf.ai/' }, // NEW
-    wellsaid: { title: 'WellSaid Labs', icon: 'WS', fields: ['apiKey'], getKeyUrl: 'https://wellsaidlabs.com/' }, // NEW
-    deepgram: { title: 'Deepgram', icon: 'Dg', fields: ['apiKey'], getKeyUrl: 'https://console.deepgram.com/' },
-    lmnt: { title: 'LMNT', icon: 'Lm', fields: ['apiKey'], getKeyUrl: 'https://app.lmnt.com/account' },
-    fish: { title: 'Fish Audio', icon: 'Fi', fields: ['apiKey'], getKeyUrl: 'https://fish.audio/' },
-    rime: { title: 'Rime', icon: 'Ri', fields: ['apiKey'], getKeyUrl: 'https://rime.ai/' },
-    neets: { title: 'Neets', icon: 'Nt', fields: ['apiKey'], getKeyUrl: 'https://neets.ai/' },
-    speechify: { title: 'Speechify', icon: 'Sp', fields: ['apiKey'], getKeyUrl: 'https://speechify.com/' },
-    amazon_polly: { title: 'Amazon Polly', icon: 'AP', fields: ['apiKey'], getKeyUrl: 'https://aws.amazon.com/polly/' },
-    google_tts: { title: 'Google TTS', icon: 'G', fields: ['apiKey'], getKeyUrl: 'https://console.cloud.google.com/apis/credentials' },
-    azure: { title: 'Azure Speech', icon: 'Az', fields: ['apiKey', 'endpoint'], getKeyUrl: 'https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeech' },
-    piper: { title: 'Piper (Local)', icon: 'Pi', fields: ['endpoint'], getKeyUrl: 'https://github.com/rhasspy/piper' },
-    custom: { title: 'Custom TTS', icon: '?', fields: ['endpoint'] },
+    openai: { title: 'OpenAI TTS', icon: '🤖', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    elevenlabs: { title: 'ElevenLabs', icon: '🎙️', fields: ['apiKey'], getKeyUrl: 'https://elevenlabs.io/app/settings/api-keys' },
+    playht: { title: 'PlayHT', icon: '▶️', fields: ['apiKey'], getKeyUrl: 'https://play.ht/studio/api-access' },
+    cartesia: { title: 'Cartesia', icon: '🎵', fields: ['apiKey'], getKeyUrl: 'https://play.cartesia.ai/' },
+    resemble: { title: 'Resemble AI', icon: '🔊', fields: ['apiKey'], getKeyUrl: 'https://www.resemble.ai/' },
+    murf: { title: 'Murf AI', icon: '🎙️', fields: ['apiKey'], getKeyUrl: 'https://murf.ai/' },
+    wellsaid: { title: 'WellSaid Labs', icon: '✍️', fields: ['apiKey'], getKeyUrl: 'https://wellsaidlabs.com/' },
+    deepgram: { title: 'Deepgram', icon: '🎧', fields: ['apiKey'], getKeyUrl: 'https://console.deepgram.com/' },
+    lmnt: { title: 'LMNT', icon: '📢', fields: ['apiKey'], getKeyUrl: 'https://app.lmnt.com/account' },
+    fish: { title: 'Fish Audio', icon: '🐠', fields: ['apiKey'], getKeyUrl: 'https://fish.audio/' },
+    rime: { title: 'Rime', icon: '🥶', fields: ['apiKey'], getKeyUrl: 'https://rime.ai/' },
+    neets: { title: 'Neets', icon: '🎺', fields: ['apiKey'], getKeyUrl: 'https://neets.ai/' },
+    speechify: { title: 'Speechify', icon: '🗣️', fields: ['apiKey'], getKeyUrl: 'https://speechify.com/' },
+    amazon_polly: { title: 'Amazon Polly', icon: '🦜', fields: ['apiKey'], getKeyUrl: 'https://aws.amazon.com/polly/' },
+    google_tts: { title: 'Google TTS', icon: '🔮', fields: ['apiKey'], getKeyUrl: 'https://console.cloud.google.com/apis/credentials' },
+    azure: { title: 'Azure Speech', icon: '☁️', fields: ['apiKey', 'endpoint'], getKeyUrl: 'https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeech' },
+    piper: { title: 'Piper (Local)', icon: '🖥️', fields: ['endpoint'], getKeyUrl: 'https://github.com/rhasspy/piper' },
+    custom: { title: 'Custom TTS', icon: '🔧', fields: ['endpoint'] },
 
     // Workflows
-    n8n: { title: 'n8n', icon: 'n8', fields: ['webhookUrl'], getKeyUrl: 'https://n8n.io/' },
-    zapier: { title: 'Zapier', icon: 'Z', fields: ['webhookUrl'], getKeyUrl: 'https://zapier.com/' },
-    make: { title: 'Make.com', icon: 'M', fields: ['webhookUrl'], getKeyUrl: 'https://www.make.com/' },
-    activepieces: { title: 'ActivePieces', icon: 'Ap', fields: ['webhookUrl'], getKeyUrl: 'https://www.activepieces.com/' },
-    langchain: { title: 'LangChain / Graph', icon: 'LC', fields: ['webhookUrl'], getKeyUrl: 'https://langchain.com/' }, // NEW
-    pipedream: { title: 'Pipedream', icon: 'Pd', fields: ['webhookUrl'], getKeyUrl: 'https://pipedream.com/settings/api_keys' },
-    relay: { title: 'Relay.app', icon: 'Ry', fields: ['webhookUrl'], getKeyUrl: 'https://www.relay.app/' },
-    integrately: { title: 'Integrately', icon: 'In', fields: ['webhookUrl'], getKeyUrl: 'https://integrately.com/' },
-    pabbly: { title: 'Pabbly', icon: 'Pb', fields: ['webhookUrl'], getKeyUrl: 'https://www.pabbly.com/connect/' },
-    tray: { title: 'Tray.io', icon: 'Tr', fields: ['webhookUrl'], getKeyUrl: 'https://tray.io/' },
-    custom_rag: { title: 'Custom RAG', icon: 'Cr', fields: ['webhookUrl'] },
+    n8n: { title: 'n8n', icon: '🔗', fields: ['webhookUrl'], getKeyUrl: 'https://n8n.io/' },
+    zapier: { title: 'Zapier', icon: '⚡', fields: ['webhookUrl'], getKeyUrl: 'https://zapier.com/' },
+    make: { title: 'Make.com', icon: '🛠️', fields: ['webhookUrl'], getKeyUrl: 'https://www.make.com/' },
+    activepieces: { title: 'ActivePieces', icon: '🧩', fields: ['webhookUrl'], getKeyUrl: 'https://www.activepieces.com/' },
+    langchain: { title: 'LangChain / Graph', icon: '⛓️', fields: ['webhookUrl'], getKeyUrl: 'https://langchain.com/' },
+    pipedream: { title: 'Pipedream', icon: '🌊', fields: ['webhookUrl'], getKeyUrl: 'https://pipedream.com/settings/api_keys' },
+    relay: { title: 'Relay.app', icon: '📡', fields: ['webhookUrl'], getKeyUrl: 'https://www.relay.app/' },
+    integrately: { title: 'Integrately', icon: '🔀', fields: ['webhookUrl'], getKeyUrl: 'https://integrately.com/' },
+    pabbly: { title: 'Pabbly', icon: '📦', fields: ['webhookUrl'], getKeyUrl: 'https://www.pabbly.com/connect/' },
+    tray: { title: 'Tray.io', icon: '🎯', fields: ['webhookUrl'], getKeyUrl: 'https://tray.io/' },
+    dify: { title: 'Dify Workflows', icon: '🎯', fields: ['apiKey', 'webhookUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
+    custom_rag: { title: 'Custom RAG', icon: '🗂️', fields: ['webhookUrl'] },
 };
 
 const SettingsPage: React.FC = () => {
-    const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm' | 'inference' | 'website'>('llm');
-    const [settings, setSettings] = useState<GlobalSettings>(INITIAL_SETTINGS);
-    const [hasChanges, setHasChanges] = useState(false);
+     const navigate = useNavigate();
+     const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm' | 'inference' | 'website'>('llm');
+     const [settings, setSettings] = useState<GlobalSettings>(INITIAL_SETTINGS);
+     const [hasChanges, setHasChanges] = useState(false);
 
     // Load settings on mount
     useEffect(() => {

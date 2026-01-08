@@ -81,4 +81,7 @@ class ToastService {
     }
 }
 
-export default new ToastService();
+const toastService = new ToastService();
+
+export { toastService };
+export default toastService;

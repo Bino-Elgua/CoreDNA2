@@ -140,7 +140,13 @@ export interface UserProfile {
     name: string;
     email: string;
     avatar: string;
-    tier: 'free' | 'pro' | 'agency';
+    tier: 'free' | 'pro' | 'hunter' | 'agency';
+    usage?: {
+        extractionsThisMonth: number;
+        lastResetDate: string;
+    };
+    teamId?: string;
+    role?: 'owner' | 'admin' | 'member';
 }
 
 export type LLMProviderId = 'google' | 'openai' | 'anthropic' | 'mistral' | 'xai' | 'deepseek' | 'groq' | 'together' | 'openrouter' | 'perplexity' | 'qwen' | 'cohere' | 'meta_llama' | 'microsoft' | 'ollama' | 'custom_openai' | 'sambanova' | 'cerebras' | 'hyperbolic' | 'nebius' | 'aws_bedrock' | 'friendli' | 'replicate_llm' | 'minimax' | 'hunyuan' | 'blackbox' | 'dify' | 'venice' | 'zai' | 'comet' | 'huggingface';

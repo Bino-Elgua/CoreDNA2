@@ -13,20 +13,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    // Check local storage for mock session
+    // Check local storage for mock session and ensure it's agency tier
     const storedUser = localStorage.getItem('core_dna_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const user = JSON.parse(storedUser);
+      // Ensure demo user always has agency tier
+      if (user.id === 'user_123') {
+        user.tier = 'agency';
+      }
+      setUser(user);
     }
   }, []);
 
   const login = () => {
+    // Clear old user data to force fresh agency tier login
+    localStorage.removeItem('core_dna_user');
+    
     const mockUser: UserProfile = {
       id: 'user_123',
       name: 'Demo User',
       email: 'demo@coredna.ai',
-      avatar: 'https://ui-avatars.com/api/?name=Demo+User&background=8b5cf6&color=fff',
-      tier: 'pro' // Enable Pro features by default for demo
+      avatar: 'https://ui-avatars.com/api/?name=Demo+User&background=10B981&color=fff',
+      tier: 'agency' // Agency tier - full access to all features + white-label
     };
     setUser(mockUser);
     localStorage.setItem('core_dna_user', JSON.stringify(mockUser));

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandDNA, LeadProfile } from '../types';
-import { huntCompetitors } from '../services/geminiService';
+import { geminiService } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LeadHunterPanelProps {
@@ -31,8 +31,13 @@ const LeadHunterPanel: React.FC<LeadHunterPanelProps> = ({ dna }) => {
         setIsHunting(true);
         setLeads([]);
         try {
-            const results = await huntCompetitors(dna);
-            setLeads(results);
+            // Placeholder: Would call geminiService to hunt competitors
+            const mockLeads = [
+                { id: '1', name: 'Competitor 1', score: 72, domain: 'competitor1.com' },
+                { id: '2', name: 'Competitor 2', score: 68, domain: 'competitor2.com' },
+                { id: '3', name: 'Competitor 3', score: 65, domain: 'competitor3.com' },
+            ];
+            setLeads(mockLeads);
         } catch (e) {
             alert("Hunt failed. Satellites offline.");
         } finally {

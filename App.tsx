@@ -1,27 +1,90 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastContainer } from './components/ToastContainer';
+import { ApiKeyPrompt } from './components/ApiKeyPrompt';
 import Layout from './components/Layout';
-import ExtractPage from './pages/ExtractPage';
-import DashboardPage from './pages/DashboardPage';
-import CampaignsPage from './pages/CampaignsPage';
-import BrandSimulatorPage from './pages/BrandSimulatorPage';
-import AgentForgePage from './pages/AgentForgePage';
-import SettingsPage from './pages/SettingsPage';
-import BattleModePage from './pages/BattleModePage';
-import SonicLabPage from './pages/SonicLabPage';
-import LiveSessionPage from './pages/LiveSessionPage';
-import SharedProfilePage from './pages/SharedProfilePage';
-import SiteBuilderPage from './pages/SiteBuilderPage';
-import SchedulerPage from './pages/SchedulerPage';
-import AutomationsPage from './pages/AutomationsPage';
+
+// Lazy load pages
+const ExtractPage = React.lazy(() => import('./pages/ExtractPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
+const BrandSimulatorPage = React.lazy(() => import('./pages/BrandSimulatorPage'));
+const AgentForgePage = React.lazy(() => import('./pages/AgentForgePage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const BattleModePage = React.lazy(() => import('./pages/BattleModePage'));
+const SonicLabPage = React.lazy(() => import('./pages/SonicLabPage'));
+const LiveSessionPage = React.lazy(() => import('./pages/LiveSessionPage'));
+const SharedProfilePage = React.lazy(() => import('./pages/SharedProfilePage'));
+const SiteBuilderPage = React.lazy(() => import('./pages/SiteBuilderPage'));
+const SchedulerPage = React.lazy(() => import('./pages/SchedulerPage'));
+const AutomationsPage = React.lazy(() => import('./pages/AutomationsPage'));
+
+// Loading fallback
+const LoadingFallback = () => (
+  <div className="h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600">
+    <div className="text-center">
+      <div className="text-5xl mb-4 animate-bounce">🧬</div>
+      <p className="text-white text-lg">Loading...</p>
+    </div>
+  </div>
+);
+
+// Error boundary
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20">
+          <div className="text-center max-w-md">
+            <h1 className="text-3xl font-bold text-red-600 dark:text-red-400 mb-4">Error</h1>
+            <p className="text-red-700 dark:text-red-300 mb-4">{this.state.error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(true);
+  const [showApiPrompt, setShowApiPrompt] = useState(false);
 
-  // Dark Mode Effect
+  useEffect(() => {
+    try {
+      const apiKeys = localStorage.getItem('apiKeys');
+      const hasKeys = apiKeys && Object.keys(JSON.parse(apiKeys)).length > 0;
+      const dismissed = localStorage.getItem('apiPromptDismissed');
+
+      if (!hasKeys && !dismissed) {
+        setShowApiPrompt(true);
+      }
+    } catch (e) {
+      console.error('Error checking API keys:', e);
+    }
+  }, []);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -32,39 +95,52 @@ const App: React.FC = () => {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
+  const handleApiPromptComplete = () => {
+    localStorage.setItem('apiPromptDismissed', 'true');
+    setShowApiPrompt(false);
+  };
+
   return (
-    <AuthProvider>
-      <Router>
-        <ToastContainer />
-        <Routes>
-            {/* Shared Route - No Layout Wrappers */}
-            <Route path="/share/:id" element={<SharedProfilePage />} />
-            
-            {/* Main App Routes */}
-            <Route path="*" element={
+    <ErrorBoundary>
+      <>
+        {showApiPrompt && <ApiKeyPrompt onComplete={handleApiPromptComplete} />}
+        <AuthProvider>
+          <Router>
+            <ToastContainer />
+            <Routes>
+              <Route path="/share/:id" element={
+                <React.Suspense fallback={<LoadingFallback />}>
+                  <SharedProfilePage />
+                </React.Suspense>
+              } />
+              
+              <Route path="*" element={
                 <Layout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
-                  <Routes>
-                    {/* Home is now Dashboard */}
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/extract" element={<ExtractPage />} />
-                    <Route path="/campaigns" element={<CampaignsPage />} />
-                    <Route path="/simulate" element={<BrandSimulatorPage />} />
-                    <Route path="/live" element={<LiveSessionPage />} />
-                    <Route path="/agent-forge" element={<AgentForgePage />} />
-                    <Route path="/builder" element={<SiteBuilderPage />} />
-                    <Route path="/scheduler" element={<SchedulerPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/battle" element={<BattleModePage />} />
-                    <Route path="/sonic" element={<SonicLabPage />} />
-                    <Route path="/automations" element={<AutomationsPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                  <React.Suspense fallback={<LoadingFallback />}>
+                    <Routes>
+                      <Route path="/" element={<DashboardPage />} />
+                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/extract" element={<ExtractPage />} />
+                      <Route path="/campaigns" element={<CampaignsPage />} />
+                      <Route path="/simulate" element={<BrandSimulatorPage />} />
+                      <Route path="/live" element={<LiveSessionPage />} />
+                      <Route path="/agent-forge" element={<AgentForgePage />} />
+                      <Route path="/builder" element={<SiteBuilderPage />} />
+                      <Route path="/scheduler" element={<SchedulerPage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/battle" element={<BattleModePage />} />
+                      <Route path="/sonic" element={<SonicLabPage />} />
+                      <Route path="/automations" element={<AutomationsPage />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </React.Suspense>
                 </Layout>
-            } />
-        </Routes>
-      </Router>
-    </AuthProvider>
+              } />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </>
+    </ErrorBoundary>
   );
 };
 

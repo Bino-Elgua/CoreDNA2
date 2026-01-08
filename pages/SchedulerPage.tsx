@@ -31,6 +31,7 @@ const SchedulerPage: React.FC = () => {
     const [isDeploying, setIsDeploying] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [activeTab, setActiveTab] = useState<'calendar' | 'queue'>('calendar');
 
     const loadLocalData = () => {
         const storedProfiles = localStorage.getItem('core_dna_profiles');
@@ -224,7 +225,7 @@ const SchedulerPage: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 h-[calc(100vh-64px)] flex flex-col">
+        <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-display font-black uppercase tracking-tight text-white">Neural Scheduler</h1>
@@ -265,24 +266,42 @@ const SchedulerPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-8 overflow-hidden">
-                {/* Content Queue Sidebar */}
-                <div className="w-80 bg-[#0a1120]/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/5 flex flex-col shadow-2xl overflow-hidden ring-1 ring-white/10">
-                    <div className="p-6 border-b border-white/5 bg-white/5">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-black uppercase tracking-[0.2em] text-[10px] text-dna-secondary">Asset Queue</h3>
-                            <span className="bg-dna-secondary/10 text-dna-secondary text-[10px] px-2 py-0.5 rounded-full font-bold">{filteredQueue.length}</span>
+            {/* Tab Navigation */}
+            <div className="flex gap-2 mb-6">
+                <button 
+                    onClick={() => setActiveTab('calendar')}
+                    className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all ${activeTab === 'calendar' ? 'bg-dna-primary text-white shadow-lg shadow-dna-primary/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'} border border-white/10`}
+                >
+                    📅 Calendar View
+                </button>
+                <button 
+                    onClick={() => setActiveTab('queue')}
+                    className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center gap-2 ${activeTab === 'queue' ? 'bg-dna-primary text-white shadow-lg shadow-dna-primary/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'} border border-white/10`}
+                >
+                    📦 Asset Queue {filteredQueue.length > 0 && <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">{filteredQueue.length}</span>}
+                </button>
+            </div>
+
+            <div className="flex-1 flex gap-8 overflow-auto min-h-[600px]">
+                {/* Conditional Rendering */}
+                {activeTab === 'queue' ? (
+                    // Asset Queue Full View
+                    <div className="flex-1 bg-[#0a1120]/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/5 flex flex-col shadow-2xl overflow-y-auto ring-1 ring-white/10">
+                        <div className="p-6 border-b border-white/5 bg-white/5">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-black uppercase tracking-[0.2em] text-sm text-dna-secondary">Asset Queue</h3>
+                                <span className="bg-dna-secondary/10 text-dna-secondary text-[10px] px-2 py-0.5 rounded-full font-bold">{filteredQueue.length}</span>
+                            </div>
+                            {filteredQueue.length > 0 && (
+                                <button 
+                                    onClick={handleAutoSchedule} 
+                                    className="w-full py-2.5 text-[9px] font-black uppercase tracking-widest bg-dna-primary text-white rounded-xl hover:opacity-90 transition-all shadow-lg shadow-dna-primary/10"
+                                >
+                                    Neural Auto-Sequence
+                                </button>
+                            )}
+                            <p className="mt-4 text-[9px] text-gray-500 leading-relaxed text-center font-bold uppercase tracking-wider">Select item below then tap a date</p>
                         </div>
-                        {filteredQueue.length > 0 && (
-                            <button 
-                                onClick={handleAutoSchedule} 
-                                className="w-full py-2.5 text-[9px] font-black uppercase tracking-widest bg-dna-primary text-white rounded-xl hover:opacity-90 transition-all shadow-lg shadow-dna-primary/10"
-                            >
-                                Neural Auto-Sequence
-                            </button>
-                        )}
-                        <p className="mt-4 text-[9px] text-gray-500 leading-relaxed text-center font-bold uppercase tracking-wider">Select item below then tap a date</p>
-                    </div>
                     
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                         {isAnalyzing && (
@@ -333,10 +352,10 @@ const SchedulerPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Calendar Grid View */}
-                <div className="flex-1 bg-[#0a1120]/40 backdrop-blur-xl rounded-[3rem] border border-white/5 flex flex-col shadow-2xl overflow-hidden ring-1 ring-white/5">
+                    </div>
+                ) : (
+                    // Calendar View
+                    <div className="flex-1 bg-[#0a1120]/40 backdrop-blur-xl rounded-[3rem] border border-white/5 flex flex-col shadow-2xl overflow-y-auto ring-1 ring-white/5">
                     <div className="p-8 flex justify-between items-center border-b border-white/5 bg-white/2">
                         <div className="flex items-center gap-4">
                             <h2 className="text-2xl font-display font-black uppercase tracking-[0.2em] text-white">
@@ -409,7 +428,8 @@ const SchedulerPage: React.FC = () => {
                             );
                         })}
                     </div>
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Asset Preview Modal */}
