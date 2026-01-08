@@ -78,7 +78,11 @@ const CampaignsPage: React.FC = () => {
                 }
             }
         }
-    } catch (e) { alert("Failed to generate campaign"); }
+    } catch (e) { 
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error("Campaign generation failed:", errorMsg, e);
+        alert(`Failed to generate campaign: ${errorMsg}`);
+    }
     finally { setLoading(false); }
   };
 

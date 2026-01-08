@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastContainer } from './components/ToastContainer';
 import Layout from './components/Layout';
 import ExtractPage from './pages/ExtractPage';
 import DashboardPage from './pages/DashboardPage';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
+        <ToastContainer />
         <Routes>
             {/* Shared Route - No Layout Wrappers */}
             <Route path="/share/:id" element={<SharedProfilePage />} />

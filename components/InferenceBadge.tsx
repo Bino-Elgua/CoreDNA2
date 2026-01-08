@@ -5,12 +5,14 @@ interface InferenceBadgeProps {
     type: 'speculative' | 'self-consistent' | 'skeleton' | 'verified' | 'needs-review';
     size?: 'sm' | 'md' | 'lg';
     animated?: boolean;
+    showLabel?: boolean;
 }
 
 export const InferenceBadge: React.FC<InferenceBadgeProps> = ({
     type,
     size = 'md',
     animated = false,
+    showLabel = true,
 }) => {
     const badgeConfig = {
         speculative: {
@@ -63,7 +65,7 @@ export const InferenceBadge: React.FC<InferenceBadgeProps> = ({
             className={`inline-flex items-center gap-1.5 rounded-full border font-semibold tracking-wide ${config.bgColor} ${config.textColor} ${config.borderColor} ${sizeClasses[size]}`}
         >
             <span>{config.icon}</span>
-            <span>{config.label}</span>
+            {showLabel && <span>{config.label}</span>}
         </div>
     );
 

@@ -62,8 +62,12 @@ async function universalGenerate(
 
     // 1. Google Gemini Native
     if (provider === 'google') {
-        // ALWAYS use process.env.API_KEY as per guidelines
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // Use API key from settings, fallback to env var
+        const apiKey = config.apiKey || process.env.API_KEY;
+        if (!apiKey) {
+            throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+        }
+        const ai = new GoogleGenAI({ apiKey });
         const contents = [];
         
         // Add images if present
@@ -548,8 +552,12 @@ export const generateAssetImage = async (imagePrompt: string, dnaStyle: string):
     try {
         // 1. Google Gemini (Imagen)
         if (provider === 'google') {
-            // ALWAYS use process.env.API_KEY as per guidelines
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            // Use API key from settings, fallback to env var
+            const apiKey = config.apiKey || process.env.API_KEY;
+            if (!apiKey) {
+                throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+            }
+            const ai = new GoogleGenAI({ apiKey });
             const resp = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: [{ text: finalPrompt }] }
@@ -618,13 +626,20 @@ export const generateAssetImage = async (imagePrompt: string, dnaStyle: string):
 
 // --- Veo Video Generation ---
 export const generateVeoVideo = async (prompt: string, imageBase64?: string): Promise<string | undefined> => {
+    const settings = getSettings();
+    const config = settings.llms['google'];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+    }
+    
     // Check for selected API key as per Veo guidelines
     if (!(await (window as any).aistudio.hasSelectedApiKey())) {
         await (window as any).aistudio.openSelectKey();
     }
     
-    // ALWAYS use process.env.API_KEY as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     try {
         // Prepare payload
@@ -678,8 +693,15 @@ export const generateVeoVideo = async (prompt: string, imageBase64?: string): Pr
 // --- Agent/Chat Wrappers ---
 
 export const createBrandChat = (dna: BrandDNA): Chat => {
-    // ALWAYS use process.env.API_KEY as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const settings = getSettings();
+    const config = settings.llms['google'];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
     const systemInstruction = `You are ${dna.name}. Brand Persona: ${dna.brandPersonality.join(', ')}. Tone: ${dna.toneOfVoice.description}.`;
     return ai.chats.create({
         model: 'gemini-3-flash-preview',
@@ -688,8 +710,15 @@ export const createBrandChat = (dna: BrandDNA): Chat => {
 };
 
 export const createAgentChat = (systemInstruction: string): Chat => {
-    // ALWAYS use process.env.API_KEY as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const settings = getSettings();
+    const config = settings.llms['google'];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
     return ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: { systemInstruction }

@@ -97,11 +97,16 @@ export async function universalGenerate(
     const provider = settings.activeLLM;
     const config = settings.llms[provider];
     
-    const modelToUse = (prompt.includes("Analyze") || prompt.includes("Domination Kit")) ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+    // Use gemini-2.5-pro for heavy analysis tasks, gemini-2.5-flash for quick tasks
+    const modelToUse = (prompt.includes("Analyze") || prompt.includes("Domination Kit")) ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
     if (provider === 'google' || !config?.enabled) {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const contents = [];
+        const apiKey = config?.apiKey || process.env.API_KEY;
+        if (!apiKey) {
+            throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+        }
+        const ai = new GoogleGenAI({ apiKey });
+        const contents: any[] = [];
         // Robust image handling: Ensure img is a string and contains comma before splitting
         for(const img of images) {
             if (img && typeof img === 'string' && img.includes(',')) {
@@ -109,16 +114,34 @@ export async function universalGenerate(
             }
         }
         contents.push({ text: prompt });
-        const resp = await ai.models.generateContent({
-            model: modelToUse,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: jsonMode ? "application/json" : "text/plain",
-                thinkingConfig: { thinkingBudget: modelToUse.includes('pro') ? 16000 : 0 }
+        
+        try {
+            const resp = await ai.models.generateContent({
+                model: modelToUse,
+                contents: contents,
+                config: {
+                    systemInstruction: systemInstruction,
+                    responseMimeType: jsonMode ? "application/json" : "text/plain"
+                }
+            });
+            return resp.text || "";
+        } catch (error: any) {
+            console.error(`[universalGenerate] Error with model ${modelToUse}:`, error);
+            // Fallback to flash if pro fails
+            if (modelToUse === 'gemini-2.5-pro') {
+                console.log('[universalGenerate] Falling back to gemini-2.5-flash');
+                const fallbackResp = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: contents,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        responseMimeType: jsonMode ? "application/json" : "text/plain"
+                    }
+                });
+                return fallbackResp.text || "";
             }
-        });
-        return resp.text || "";
+            throw error;
+        }
     }
     return "";
 }
@@ -236,7 +259,15 @@ export const runCloserAgent = async (lead: LeadProfile, senderDna?: BrandDNA): P
 };
 
 export const findLeadsWithMaps = async (niche: string, latitude: number, longitude: number): Promise<LeadProfile[]> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const settings = getSettings();
+    const config = settings.llms[settings.activeLLM];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for Google Gemini. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
     // Use gemini-2.5-flash as it supports Google Maps grounding
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -311,8 +342,16 @@ export const generateCampaignAssets = async (dna: BrandDNA, goal: string, channe
 };
 
 export const generateAssetImage = async (imagePrompt: string, dnaStyle: string): Promise<string | undefined> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const resp = await ai.models.generateContent({ model: 'gemini-2.5-flash-image', contents: { parts: [{ text: `${imagePrompt}. Brand Guidelines: ${dnaStyle}. 8k resolution, professional advertising aesthetic.` }] } });
+    const settings = getSettings();
+    const config = settings.llms[settings.activeLLM];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for image generation. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
+    const resp = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ text: `${imagePrompt}. Brand Guidelines: ${dnaStyle}. 8k resolution, professional advertising aesthetic.` }] } });
     for (const part of resp.candidates?.[0]?.content?.parts || []) { if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`; }
     return undefined;
 };
@@ -329,13 +368,29 @@ export const runBattleSimulation = async (brandA: BrandDNA, brandB: BrandDNA): P
 };
 
 export const createBrandChat = (dna: BrandDNA): Chat => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    return ai.chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction: `You are the physical embodiment of ${dna.name}. Your tone is ${dna.toneOfVoice.description}. Your mission is ${dna.mission}.` } });
+    const settings = getSettings();
+    const config = settings.llms[settings.activeLLM];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for chat. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
+    return ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: `You are the physical embodiment of ${dna.name}. Your tone is ${dna.toneOfVoice.description}. Your mission is ${dna.mission}.` } });
 };
 
 export const createAgentChat = (systemInstruction: string): Chat => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    return ai.chats.create({ model: 'gemini-3-flash-preview', config: { systemInstruction } });
+    const settings = getSettings();
+    const config = settings.llms[settings.activeLLM];
+    const apiKey = config?.apiKey || process.env.API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('No API key configured for chat. Please add your API key in Settings.');
+    }
+    
+    const ai = new GoogleGenAI({ apiKey });
+    return ai.chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction } });
 };
 
 export const generateAgentSystemPrompt = (dna: BrandDNA, role: AgentRole, guardrails: any): string => `You are a ${role} for ${dna.name}. Identity: ${dna.brandPersonality.join(', ')}. Strictness: ${guardrails.strictness}. Use the tone: ${dna.toneOfVoice.description}.`;

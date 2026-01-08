@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GlobalSettings, LLMProviderId, ImageProviderId, VoiceProviderId, WorkflowProviderId } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { workflowProviderManager, WorkflowProviderConfig } from '../services/workflowProvider';
+import { getSettings, saveSettings } from '../services/settingsService';
+import HealthCheckInput from '../components/HealthCheckInput';
+import { HealthCheckResult } from '../services/healthCheckService';
 
 const INITIAL_SETTINGS: GlobalSettings = {
     theme: 'system',
@@ -212,31 +215,46 @@ const SettingsPage: React.FC = () => {
 
     // Load settings on mount
     useEffect(() => {
-        const stored = localStorage.getItem('core_dna_settings');
-        if (stored) {
+        const loadSettings = async () => {
             try {
-                const parsed = JSON.parse(stored);
-                setSettings(prev => ({
-                    ...prev,
-                    ...parsed,
-                    llms: { ...prev.llms, ...parsed.llms },
-                    image: { ...prev.image, ...parsed.image },
-                    voice: { ...prev.voice, ...parsed.voice },
-                    workflows: { ...prev.workflows, ...parsed.workflows },
-                    whiteLabel: { ...prev.whiteLabel, ...parsed.whiteLabel },
-                    inference: { ...prev.inference, ...parsed.inference }
-                }));
+                const stored = await getSettings();
+                if (stored) {
+                    setSettings(prev => ({
+                        ...prev,
+                        ...stored,
+                        llms: { ...prev.llms, ...stored.llms },
+                        image: { ...prev.image, ...stored.image },
+                        voice: { ...prev.voice, ...stored.voice },
+                        workflows: { ...prev.workflows, ...stored.workflows },
+                        whiteLabel: { ...prev.whiteLabel, ...stored.whiteLabel },
+                        inference: { ...prev.inference, ...stored.inference }
+                    }));
+                }
             } catch (e) {
                 console.error("Failed to load settings", e);
             }
-        }
+        };
+        loadSettings();
     }, []);
 
-    const handleSave = () => {
-        localStorage.setItem('core_dna_settings', JSON.stringify(settings));
-        setHasChanges(false);
-        window.dispatchEvent(new Event('settingsUpdated'));
-        alert("Settings saved successfully. Neural pathways updated.");
+    const handleSave = async () => {
+        try {
+            console.log("Saving settings to Supabase...");
+            const success = await saveSettings(settings);
+            
+            if (success) {
+                setHasChanges(false);
+                window.dispatchEvent(new Event('settingsUpdated'));
+                alert("Settings saved successfully. Neural pathways updated.");
+                console.log("Settings saved:", settings);
+            } else {
+                throw new Error('Failed to save settings');
+            }
+        } catch (error: any) {
+            const errorMsg = error?.message || String(error);
+            console.error("Failed to save settings:", errorMsg, error);
+            alert(`Error saving settings: ${errorMsg}`);
+        }
     };
 
     const updateProvider = (category: keyof GlobalSettings, key: string, updates: Partial<any>) => {
@@ -267,6 +285,7 @@ const SettingsPage: React.FC = () => {
     const ProviderCard = ({ id, category, data, isActive, onToggle }: any) => {
         const meta = PROVIDER_META[id] || { title: id, icon: id.charAt(0).toUpperCase(), fields: ['apiKey'], getKeyUrl: '' };
         const isWorkflowProvider = category === 'workflows';
+        const [healthStatuses, setHealthStatuses] = useState<Record<string, HealthCheckResult | null>>({});
 
         const handleConfigureWorkflow = () => {
             if (data.enabled && isWorkflowProvider) {
@@ -280,6 +299,35 @@ const SettingsPage: React.FC = () => {
                 workflowProviderManager.setConfig(config);
                 navigate('/automations');
             }
+        };
+
+        const handleHealthCheck = (field: string, result: HealthCheckResult) => {
+            setHealthStatuses(prev => ({ ...prev, [field]: result }));
+        };
+
+        const getFieldLabel = (field: string) => {
+            const labels: Record<string, string> = {
+                'apiKey': 'API Key',
+                'baseUrl': 'Base URL',
+                'defaultModel': 'Model ID',
+                'endpoint': 'Endpoint URL',
+                'webhookUrl': 'Webhook URL',
+            };
+            return labels[field] || field;
+        };
+
+        const getFieldInputType = (field: string) => {
+            return field === 'apiKey' || field === 'endpoint' ? 'password' : field === 'webhookUrl' ? 'url' : 'text';
+        };
+
+        const getFieldPlaceholder = (field: string) => {
+            const placeholders: Record<string, string> = {
+                'baseUrl': 'https://api...',
+                'webhookUrl': 'https://webhook.url...',
+                'apiKey': '●●●●●●●●●●●●',
+                'endpoint': 'https://...',
+            };
+            return placeholders[field] || '';
         };
         
         return (
@@ -311,42 +359,112 @@ const SettingsPage: React.FC = () => {
                 </div>
                 {data.enabled && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-700">
-                        {meta.fields.map((field: string) => (
-                            <div key={field}>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                    {field === 'apiKey' ? 'API Key' : field === 'baseUrl' ? 'Base URL' : field === 'defaultModel' ? 'Model ID' : field === 'endpoint' ? 'Endpoint URL' : field === 'webhookUrl' ? 'Webhook URL' : field}
-                                </label>
-                                <input 
-                                    type={field === 'apiKey' || field === 'endpoint' ? 'password' : 'text'}
-                                    value={data[field] || ''}
-                                    onChange={e => {
-                                        updateProvider(category, id, { [field]: e.target.value });
-                                        // For workflow providers, also update workflowProviderManager
-                                        if (isWorkflowProvider && isActive) {
-                                            const config: WorkflowProviderConfig = {
-                                                type: id as any,
-                                                apiKey: field === 'apiKey' ? e.target.value : (data.apiKey || ''),
-                                                baseUrl: field === 'baseUrl' ? e.target.value : data.baseUrl,
-                                                webhookUrl: field === 'webhookUrl' ? e.target.value : data.webhookUrl,
-                                            };
-                                            workflowProviderManager.setConfig(config);
-                                        }
-                                    }}
-                                    className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-dna-primary outline-none text-sm font-mono"
-                                    placeholder={field === 'baseUrl' ? 'https://api...' : field === 'webhookUrl' ? 'https://webhook.url...' : ''}
-                                />
-                                {(field === 'apiKey' || field === 'webhookUrl') && meta.getKeyUrl && (
-                                    <a 
-                                        href={meta.getKeyUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        className="text-[10px] text-dna-primary hover:text-dna-secondary hover:underline flex items-center gap-1 mt-1 font-medium"
-                                    >
-                                        Get {field === 'apiKey' ? 'API Key' : 'Details'} &rarr;
-                                    </a>
-                                )}
-                            </div>
-                        ))}
+                        {meta.fields.map((field: string) => {
+                            // Use HealthCheckInput for API keys and webhook URLs
+                            const useHealthCheck = (field === 'apiKey' || field === 'webhookUrl');
+                            
+                            if (useHealthCheck && !isWorkflowProvider && field === 'apiKey') {
+                                // Map category to type: 'llms' -> 'llm', 'image' -> 'image', 'voice' -> 'voice'
+                                const typeMap: Record<string, 'llm' | 'image' | 'voice' | 'workflow'> = {
+                                    'llms': 'llm',
+                                    'image': 'image',
+                                    'voice': 'voice',
+                                    'workflows': 'workflow'
+                                };
+                                const healthCheckType = typeMap[category] || ('llm' as const);
+
+                                return (
+                                    <HealthCheckInput
+                                        key={field}
+                                        provider={id as any}
+                                        type={healthCheckType}
+                                        config={data}
+                                        value={data[field] || ''}
+                                        onChange={e => updateProvider(category, id, { [field]: e })}
+                                        onHealthCheck={(result) => handleHealthCheck(field, result)}
+                                        label={getFieldLabel(field)}
+                                        fieldName={field}
+                                        placeholder={getFieldPlaceholder(field)}
+                                        inputType={getFieldInputType(field) as 'password' | 'text' | 'url'}
+                                    />
+                                );
+                            } else if (useHealthCheck && isWorkflowProvider) {
+                                return (
+                                    <HealthCheckInput
+                                        key={field}
+                                        provider={id as any}
+                                        type="workflow"
+                                        config={data}
+                                        value={data[field] || ''}
+                                        onChange={e => {
+                                            updateProvider(category, id, { [field]: e });
+                                            if (isActive) {
+                                                const config: WorkflowProviderConfig = {
+                                                    type: id as any,
+                                                    apiKey: data.apiKey || '',
+                                                    baseUrl: data.baseUrl,
+                                                    webhookUrl: field === 'webhookUrl' ? e : data.webhookUrl,
+                                                };
+                                                workflowProviderManager.setConfig(config);
+                                            }
+                                        }}
+                                        onHealthCheck={(result) => handleHealthCheck(field, result)}
+                                        label={getFieldLabel(field)}
+                                        fieldName={field}
+                                        placeholder={getFieldPlaceholder(field)}
+                                        inputType={getFieldInputType(field) as 'password' | 'text' | 'url'}
+                                    />
+                                );
+                            }
+
+                            // Standard input for other fields
+                            return (
+                                <div key={field}>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                        {getFieldLabel(field)}
+                                    </label>
+                                    <input 
+                                        type={getFieldInputType(field)}
+                                        value={data[field] || ''}
+                                        onChange={e => {
+                                            updateProvider(category, id, { [field]: e.target.value });
+                                            // For workflow providers, also update workflowProviderManager
+                                            if (isWorkflowProvider && isActive) {
+                                                const config: WorkflowProviderConfig = {
+                                                    type: id as any,
+                                                    apiKey: field === 'apiKey' ? e.target.value : (data.apiKey || ''),
+                                                    baseUrl: field === 'baseUrl' ? e.target.value : data.baseUrl,
+                                                    webhookUrl: field === 'webhookUrl' ? e.target.value : data.webhookUrl,
+                                                };
+                                                workflowProviderManager.setConfig(config);
+                                            }
+                                        }}
+                                        className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-dna-primary outline-none text-sm font-mono"
+                                        placeholder={getFieldPlaceholder(field)}
+                                    />
+                                    {(field === 'apiKey' || field === 'webhookUrl') && meta.getKeyUrl && !useHealthCheck && (
+                                        <a 
+                                            href={meta.getKeyUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="text-[10px] text-dna-primary hover:text-dna-secondary hover:underline flex items-center gap-1 mt-1 font-medium"
+                                        >
+                                            Get {field === 'apiKey' ? 'API Key' : 'Details'} &rarr;
+                                        </a>
+                                    )}
+                                    {useHealthCheck && meta.getKeyUrl && (
+                                        <a 
+                                            href={meta.getKeyUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="text-[10px] text-dna-primary hover:text-dna-secondary hover:underline flex items-center gap-1 mt-1 font-medium"
+                                        >
+                                            Get {field === 'apiKey' ? 'API Key' : 'Details'} &rarr;
+                                        </a>
+                                    )}
+                                </div>
+                            );
+                        })}
                         {isWorkflowProvider && (
                             <motion.button
                                 initial={{ opacity: 0, y: -10 }}
@@ -379,14 +497,17 @@ const SettingsPage: React.FC = () => {
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Configure models, voices, and automated scheduling workflows.</p>
                 </div>
                 {hasChanges && (
-                    <motion.button 
+                    <motion.div 
                         initial={{ scale: 0.9, opacity: 0 }} 
                         animate={{ scale: 1, opacity: 1 }}
-                        onClick={handleSave}
-                        className="px-6 py-3 bg-gradient-to-r from-dna-secondary to-dna-primary text-white rounded-xl font-bold shadow-lg hover:shadow-dna-primary/30 flex items-center gap-2"
                     >
-                        Save Changes
-                    </motion.button>
+                        <button 
+                            onClick={handleSave}
+                            className="px-6 py-3 bg-gradient-to-r from-dna-secondary to-dna-primary text-white rounded-xl font-bold shadow-lg hover:shadow-dna-primary/30 flex items-center gap-2 transition-all active:scale-95"
+                        >
+                            Save Changes
+                        </button>
+                    </motion.div>
                 )}
             </div>
 
