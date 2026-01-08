@@ -117,12 +117,10 @@ Enable RLM in **Settings → RLM Mode** and configure:
 
 ## Multi-Provider LLM Support
 
-Seamlessly switch between 40+ LLM providers:
-- **Fast & Free:** Google Gemini, Groq, Ollama
-- **Advanced:** OpenAI (GPT-4), Claude 3.5, Mistral
-- **Specialized:** DeepSeek, Grok (xAI), Qwen, LLaMA 3
-- **High-Performance:** SambaNova, Cerebras, Hyperbolic
-- **Local:** Ollama, Custom OpenAI-compatible endpoints
+Seamlessly switch between 6 primary + optional LLM providers:
+- **Primary (Configured):** Google Gemini, OpenAI (GPT-4), Claude (Anthropic), Mistral, Groq, Cohere
+- **Optional:** DeepSeek, Grok (xAI), Qwen, custom OpenAI-compatible endpoints
+- **Strategy:** Default to fast/free options (Gemini, Groq), fallback to premium (OpenAI, Claude)
 
 ## Architecture
 
@@ -140,7 +138,7 @@ Seamlessly switch between 40+ LLM providers:
 |---------|------|------|-----|--------|
 | Brand DNA Extraction | ✓ | ✓ | ✓ | ✓ |
 | Battle Mode | ✓ | ✓ | ✓ | ✓ |
-| Lead Hunter | Limited | ✓ | ✓ | ✓ |
+| Lead Hunter | ✗ | ✓ | ✓ | ✓ |
 | Closer Agent | ✗ | ✗ | ✓ | ✓ |
 | **Speculative Decoding** | ✗ | ✗ | **✓** | **✓** |
 | **Self-Consistency** | ✗ | ✓ | ✓ | ✓ |
@@ -148,7 +146,7 @@ Seamlessly switch between 40+ LLM providers:
 | **Chain-of-Verification** | ✗ | ✗ | **✓** | **✓** |
 | Sample Slider (1-5) | - | - | - | **✓** |
 | **RLM Mode** | ✗ | ✗ | **✓** | **✓** |
-| Multi-Provider LLMs | 3 | 3 | Unlimited | Unlimited |
+| Multi-Provider LLMs | 3 | 6 | 6+ | 6+ |
 | White-Label | ✗ | ✗ | ✓ | ✓ |
 
 ## n8n Workflow Architecture
@@ -167,12 +165,15 @@ All core features run as n8n workflows with automatic triggering from the UI:
 
 ```typescript
 // In ExtractPage, BattleMode, CampaignsPage, etc.:
-if (n8nService.isAvailable()) {
+const n8nAvailable = await n8nService.isAvailable();
+if (n8nAvailable) {
     result = await n8nService.runLeadGeneration(...);
 } else {
     result = await standardFallback(...); // Graceful fallback
 }
 ```
+
+**Key:** n8n is optional. If unavailable, the app automatically falls back to standard processing. Users experience zero disruption.
 
 All workflows execute **silently** — users see a progress indicator but not the engine mechanics.
 
@@ -233,6 +234,22 @@ See `INFERENCE_QUICK_REFERENCE.md` for quick integration guide.
 - Complete brand customization in Settings
 - No Core DNA branding exposed in default UI
 - n8n and other engines kept invisible to end users
+
+---
+
+## Security & Reliability
+
+### Data Privacy
+- **Row-Level Security (RLS)** — Users can only access their own settings (Supabase enforced)
+- **No API Key Exposure** — All LLM keys stored server-side or client-protected
+- **Graceful Degradation** — All features work without n8n or inference enabled
+- See `DATA_PRIVACY.md` for comprehensive security architecture
+
+### Service Resilience
+- **n8n Health Checks** — Service availability verified before workflow execution
+- **Automatic Fallback** — If n8n unavailable, standard LLM processing activates
+- **Inference Optional** — Inference techniques are disabled by default (backward compatible)
+- See `TEST_SUITE.md` for validation procedures
 
 ---
 
