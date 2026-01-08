@@ -37,19 +37,29 @@ CoreDNA is an enterprise SaaS platform for brand intelligence and sales automati
 **Documentation:** https://docs.coredna.ai  
 **Status:** https://status.coredna.ai
 
+### Core Features
+
+- **Brand Extraction** — AI-powered brand DNA analysis from any website
+- **Campaign Generation** — Automated marketing asset creation
+- **Website Builder** — Instant site generation and deployment
+- **Sonic Co-Pilot** — Voice-activated AI assistant (Hunter+ tier)
+- **Workflow Automation** — n8n-powered automation engine
+- **Team Collaboration** — Multi-user workspace management
+
 ### Technology Stack
 
 - React 19 + TypeScript + Vite
 - Supabase (PostgreSQL)
 - n8n automation engine
+- Web Speech API (voice recognition)
 - 70+ AI provider integrations
 
 ### Subscription Tiers
 
 - **Free** — $0 (3 extractions/month)
 - **Pro** — $49/mo (Unlimited, all providers)
-- **Hunter** — $149/mo (Pro + automation)
-- **Agency** — Custom (White-label, unlimited team)
+- **Hunter** — $149/mo (Pro + automation + Sonic Co-Pilot voice)
+- **Agency** — Custom (White-label, unlimited team, advanced features)
 
 ---
 
@@ -101,6 +111,7 @@ Get production keys from 1Password vault: "CoreDNA Production Keys"
 - [Development Guide](./docs/internal/DEVELOPMENT.md)
 - [Architecture Overview](./docs/internal/ARCHITECTURE.md)
 - [Security Protocols](./docs/internal/SECURITY.md)
+- [Sonic Co-Pilot Setup](./README_SONIC.md) — Voice agent implementation guide
 
 **External (Public):**
 
