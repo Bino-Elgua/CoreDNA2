@@ -1,332 +1,150 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+
+<img width="1200" height="475" alt="CoreDNA Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+
+# CoreDNA — Enterprise AI Brand Intelligence Platform
+
+**Proprietary AI-powered brand analysis and sales acceleration platform.**
+
+> ⚠️ **PRIVATE REPOSITORY**  
+> This repository is confidential and restricted to authorized CoreDNA team members only.
+
 </div>
 
-# Core DNA v2 — AI Brand Intelligence Platform
+---
 
-Comprehensive AI-powered brand analysis, competitive intelligence, and sales acceleration platform powered by **n8n automation engine** with **Recursive Language Model (RLM)** support for infinite context processing.
+## 🔒 Access Policy
 
-**Core DNA is now workflow-native** — all agents run on n8n automation engine. No manual configuration required for end users. The magic happens silently.
+**Authorized Personnel Only:**
 
-**Live Demo:** https://ai.studio/apps/drive/1oK7GGLdvV3E15WgVsDL3I3M486CfJT2u
+- CoreDNA engineering team
+- Approved contractors (under NDA)
+- Executive stakeholders
 
-## Quick Start: 4 Tiers, One Platform
+**Unauthorized access is prohibited.**
 
-- **FREE** — Try Core DNA with 3 extractions/month
-- **PRO** ($49/mo) — Unlimited extractions + all 70+ AI providers
-- **HUNTER** ($149/mo) — Pro + workflow automation + team (3 members)
-- **AGENCY** (Custom) — Everything + unlimited team + white-label
-
-👉 **[View Full Pricing →](./src/pages/PricingPage.tsx)** | **[Tier System Docs →](./TIER_SYSTEM_INDEX.md)**
+If you need access: Contact engineering@coredna.ai
 
 ---
 
-## Features
+## 🚀 Platform Overview
 
-### Core Intelligence
-- **Brand DNA Extraction** — Analyze websites and extract complete brand identity (mission, tone, visual DNA, personas)
-- **Competitive Battle Mode** — Head-to-head strategic simulation with radar analytics and gap analysis
-- **Lead Hunter** — Geo-targeted business discovery with gap analysis and social intelligence
-- **Closer Agent** — AI-driven sales strategy with personalized outreach sequences, portfolio generation, and tiered pricing
+CoreDNA is an enterprise SaaS platform for brand intelligence and sales automation.
 
-### n8n Automation Engine (Workflow-Native)
-All core features are powered by pre-built n8n workflows:
-- **Lead Generation** — Scrape niches, filter by consistency, auto-discovery
-- **Closer Agent Swarm** — Researcher → Writer → Closer → Email outreach
-- **Campaign Generation** — DNA → Prompt LLM → Generate posts/banners/images
-- **Auto-Post Scheduler** — Schedule posts to Meta, Twitter, etc.
-- **Website Builder** — Auto-generate and deploy branded websites
+**Live Platform:** https://app.coredna.ai  
+**Documentation:** https://docs.coredna.ai  
+**Status:** https://status.coredna.ai
 
-Default behavior: All workflows run silently with zero user setup. Advanced users (Hunter tier) can view/edit/duplicate workflows in the **Automations** panel.
+### Technology Stack
 
-### Inference Engine — Next-Gen AI Reasoning (Pro/Hunter Only)
-Cut latency, boost accuracy, build trust with 4 advanced inference techniques:
+- React 19 + TypeScript + Vite
+- Supabase (PostgreSQL)
+- n8n automation engine
+- 70+ AI provider integrations
 
-1. **⚡ Speculative Decoding** — 2.1x faster token generation
-   - Auto-activate on campaigns, website gen, RLM tasks
-   - Toast notification: "Using Speculative Decoding — 2.1x faster"
+### Subscription Tiers
 
-2. **🎯 Self-Consistency (Best-of-N)** — +15-25% accuracy improvement
-   - Generate N samples (1-5, Hunter tier only) and vote on best answer
-   - Use on: Consistency Score, DNA extraction, Closer replies
-   - Badge: "Self-Consistent"
+- **Free** — $0 (3 extractions/month)
+- **Pro** — $49/mo (Unlimited, all providers)
+- **Hunter** — $149/mo (Pro + automation)
+- **Agency** — Custom (White-label, unlimited team)
 
-3. **🧩 Skeleton-of-Thought** — Live reasoning UI with animations
-   - Generate outline first, then expand each point progressively
-   - Framer Motion animations show "thinking" in real-time
-   - Use on: Battle Mode, Campaign planning, RLM analysis
+---
 
-4. **✅ Chain-of-Verification** — Legal-grade confidence checks
-   - Auto-verify outputs: cross-reference, flag inconsistencies, re-verify logic
-   - Badges: "Verified by CoV" (✓) or "Needs Review" (⚠️)
-   - Use on: All paid outputs (reports, pitches, scores)
+## 🛠️ Development Setup
 
-Configure in **Settings → Inference Engine**. See `INFERENCE_QUICK_REFERENCE.md` for integration.
+**For authorized team members only.**
 
-### RLM (Recursive Language Model) — Pro/Hunter Only
-Process unlimited context for:
-- **Full Website Crawls** — Extract entire website content without token limits
-- **Deep Competitive Analysis** — Analyze multiple competitors across unlimited dimensions
-- **Extended Conversation History** — Maintain full context in multi-turn Closer Agent sequences
-- **Unbounded Context Processing** — Handle complex, multi-step analyses that exceed standard context windows
+### Prerequisites
 
-Enable RLM in **Settings → RLM Mode** and configure:
-- **Root Model** — Primary model for root-level analysis (e.g., Google Gemini)
-- **Recursive Model** — Model for sub-task decomposition (e.g., OpenAI GPT-4)
-- **Max Recursion Depth** — Number of recursion levels (1-10)
-- **Context Window** — Max tokens per request (50k-1M)
+- Node.js 18+
+- Supabase CLI
+- Valid `.env.local` (get from team lead)
 
-## Run Locally
+### Quick Start
 
-**Prerequisites:** 
-- Node.js
-- n8n (running headless or locally: `npx n8n start`)
+```bash
+# 1. Clone repository
+git clone git@github.com:yourusername/CoreDNA.git
 
-### Setup Steps
+# 2. Install dependencies
+npm install
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+# 3. Set up environment
+cp .env.example .env.local
 
-2. **Set up n8n (Automation Engine):**
-   ```bash
-   # Option A: Local installation
-   npx n8n start
-   
-   # Option B: Docker
-   docker run -it --rm --name n8n -p 5678:5678 n8nio/n8n
-   ```
-
-3. **Deploy workflows to n8n:**
-   - Open n8n at http://localhost:5678
-   - Create the 5 core workflows using the templates in `services/workflowConfigs.ts`
-   - Get each workflow's ID and note them
-
-4. **Configure environment:**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Then fill in your API keys:
-   ```
-   VITE_GEMINI_API_KEY=your_gemini_key
-   VITE_OPENAI_API_KEY=your_openai_key
-   VITE_N8N_API_URL=http://localhost:5678/api/v1
-   VITE_N8N_API_KEY=internal
-   # ... other keys
-   ```
-
-5. **Start the app:**
-   ```bash
-   npm run dev
-   ```
-
-6. **Access the application:**
-   - Frontend: http://localhost:5173
-   - n8n Dashboard: http://localhost:5678 (optional, for advanced users)
-
-## Multi-Provider LLM Support
-
-Seamlessly switch between 6 primary + optional LLM providers:
-- **Primary (Configured):** Google Gemini, OpenAI (GPT-4), Claude (Anthropic), Mistral, Groq, Cohere
-- **Optional:** DeepSeek, Grok (xAI), Qwen, custom OpenAI-compatible endpoints
-- **Strategy:** Default to fast/free options (Gemini, Groq), fallback to premium (OpenAI, Claude)
-
-## Architecture
-
-| Component | Technology |
-|-----------|------------|
-| **Frontend** | React 19 + Vite + TypeScript + Tailwind CSS |
-| **State Management** | React Context + LocalStorage |
-| **AI Integration** | 40+ LLM providers + RLM wrapper |
-| **Visualization** | Recharts (radar, bar charts) |
-| **Animation** | Framer Motion |
-
-## 4-Tier Subscription System
-
-**Unified pricing for individuals, agencies, and enterprises:**
-
-| Feature | Free | Pro | Hunter | Agency |
-|---------|------|-----|--------|--------|
-| **Price** | $0 | $49/mo | $149/mo | Custom |
-| Brand DNA Extraction | 3/mo | ∞ | ∞ | ∞ |
-| Battle Mode | ✓ | ✓ | ✓ | ✓ |
-| Lead Hunter | ✗ | ✓ | ✓ | ✓ |
-| Closer Agent | ✗ | ✓ | ✓ | ✓ |
-| **All 4 Inference Techniques** | ✗ | **✓** | **✓** | **✓** |
-| **RLM Mode** (Infinite Context) | ✗ | **✓** | **✓** | **✓** |
-| 4 Core Workflows | ✗ | **✓** | **✓** | **✓** + Auto-Post |
-| Workflow Editing | ✗ | ✗ | **✓** | **✓** |
-| Auto-Post Scheduler | ✗ | ✗ | **✓** | **✓** |
-| Website Builder | Preview | Full | Full | Full |
-| LLM Providers | 2 | All 30+ | All 30+ | All 30+ |
-| Image Providers | 1 | All 20+ | All 20+ | All 20+ |
-| Voice Providers | 1 | All 15+ | All 15+ | All 15+ |
-| Team Members | 1 | 1 | 3 | Unlimited |
-| White-Label | ✗ | ✗ | ✗ | **✓** |
-| Bulk Extraction | ✗ | ✗ | ✗ | **✓** |
-| Support | Community | Email | Priority | Dedicated |
-
-**See `/pricing` for full comparison table and feature details.**
-
-## n8n Workflow Architecture
-
-All core features run as n8n workflows with automatic triggering from the UI:
-
-| Workflow | Trigger | Input | Output |
-|----------|---------|-------|--------|
-| **Lead Generation** | Hunt Leads button | niche, latitude, longitude | LeadProfile[] |
-| **Closer Agent Swarm** | Generate Portfolio button | lead, dna | CloserPortfolio |
-| **Campaign Generation** | Create Campaign | dna, goal | CampaignAsset[] |
-| **Auto-Post Scheduler** | Schedule button | campaign, schedule | postStatus |
-| **Website Builder** | Build Website | dna | { url, buildTime } |
-
-### Workflow Integration Points
-
-```typescript
-// In ExtractPage, BattleMode, CampaignsPage, etc.:
-const n8nAvailable = await n8nService.isAvailable();
-if (n8nAvailable) {
-    result = await n8nService.runLeadGeneration(...);
-} else {
-    result = await standardFallback(...); // Graceful fallback
-}
+# 4. Start development server
+npm run dev
 ```
 
-**Key:** n8n is optional. If unavailable, the app automatically falls back to standard processing. Users experience zero disruption.
+**Development:** http://localhost:5173
 
-All workflows execute **silently** — users see a progress indicator but not the engine mechanics.
+### Environment Variables
 
-## File Structure
+Required in `.env.local`:
+
+- `VITE_SUPABASE_URL` — Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — Supabase public key
+- `VITE_GEMINI_API_KEY` — Google Gemini API key (optional for dev)
+- `VITE_OPENAI_API_KEY` — OpenAI API key (optional for dev)
+
+Get production keys from 1Password vault: "CoreDNA Production Keys"
+
+---
+
+## 📚 Documentation
+
+**Internal (Team Only):**
+
+- [Development Guide](./docs/internal/DEVELOPMENT.md)
+- [Architecture Overview](./docs/internal/ARCHITECTURE.md)
+- [Security Protocols](./docs/internal/SECURITY.md)
+
+**External (Public):**
+
+- User Documentation: https://docs.coredna.ai
+- API Reference: https://api.coredna.ai/docs
+- Status Page: https://status.coredna.ai
+
+---
+
+## 👥 Team Contacts
+
+**Engineering:**
+- Lead: engineering@coredna.ai
+- DevOps: devops@coredna.ai
+
+**Product & Support:**
+- Product: product@coredna.ai
+- Support: support@coredna.ai
+
+**Slack:** `#engineering` (internal team)
+
+**Security Issue?** Contact security@coredna.ai immediately.
+
+---
+
+## 📜 Legal Notice
 
 ```
-src/
-├── pages/                    # Main app pages
-│   ├── ExtractPage.tsx       # DNA extraction + Lead Hunter (with n8n integration)
-│   ├── BattleModePage.tsx    # Competitive analysis
-│   ├── CampaignsPage.tsx     # Campaign management
-│   ├── SettingsPage.tsx      # LLM, RLM, White-Label config
-│   ├── AutomationsPage.tsx   # Workflow inspection (Hunter tier)
-│   └── ...
-├── components/               # Reusable UI components
-├── services/
-│   ├── geminiService.ts          # LLM integration
-│   ├── rlmService.ts             # RLM wrapper for infinite context
-│   ├── n8nService.ts             # n8n workflow orchestration
-│   ├── workflowConfigs.ts        # Workflow definitions & metadata
-│   ├── inferenceRouter.ts        # Inference technique routing
-│   ├── inferenceWrapper.ts       # Gemini call wrapper with inference
-│   ├── toastService.ts           # Toast notifications
-│   └── inferenceTests.ts         # Test suite for inference
-├── contexts/                 # React Context
-├── hooks/                    # Custom hooks
-├── types.ts                  # TypeScript interfaces
-└── constants.ts              # Config & defaults
+Unauthorized access, use, or distribution is prohibited.
+
+This software is proprietary and confidential.
+
+Copyright © 2026 CoreDNA, Inc. All Rights Reserved.
 ```
 
-## Advanced Features (Non-Breaking)
+---
 
-### 1. Inference Engine (Next-Gen AI Reasoning)
-- **Speculative Decoding**: 2.1x faster token generation via parallel predictions
-- **Self-Consistency**: Multi-sample generation with voting (N=1-5, Hunter tier)
-- **Skeleton-of-Thought**: Real-time outline expansion with live animations
-- **Chain-of-Verification**: Auto-verification with "Verified" / "Needs Review" badges
-- **Toast Notifications**: Real-time feedback on inference techniques used
-- **No Breaking Changes**: Fully backward compatible, opt-in via settings
-- **Integration**: Simple `inferenceWrapper.wrapGeminiCall()` wrapper
+## 📋 Quick Commands
 
-See `INFERENCE_QUICK_REFERENCE.md` for quick integration guide.
-
-### 2. n8n Automation Engine
-- **Default**: All workflows run silently — zero user setup
-- **Graceful Fallback**: If n8n is unavailable, standard mode activates automatically
-- **Advanced Panel**: Hunter tier users can access Automations page to view/edit workflows
-- **No External Branding**: n8n UI is hidden from regular users; Core DNA is fully white-labeled
-
-### 3. RLM (Recursive Language Model)
-- All existing features work without RLM enabled
-- Graceful fallback to standard LLM when RLM is disabled
-- Settings-driven activation (Pro/Hunter tiers only)
-- Independent of multi-provider support
-- Works seamlessly with Inference Engine techniques
-
-### 4. White-Label
-- Complete brand customization in Settings
-- No Core DNA branding exposed in default UI
-- n8n and other engines kept invisible to end users
+```bash
+npm run dev          # Run dev server
+npm run build        # Production build
+npm run preview      # Preview built version
+npm test             # Run tests (when added)
+```
 
 ---
 
-## Security & Reliability
-
-### Data Privacy
-- **Row-Level Security (RLS)** — Users can only access their own settings (Supabase enforced)
-- **No API Key Exposure** — All LLM keys stored server-side or client-protected
-- **Graceful Degradation** — All features work without n8n or inference enabled
-- See `DATA_PRIVACY.md` for comprehensive security architecture
-
-### Service Resilience
-- **n8n Health Checks** — Service availability verified before workflow execution
-- **Automatic Fallback** — If n8n unavailable, standard LLM processing activates
-- **Inference Optional** — Inference techniques are disabled by default (backward compatible)
-- See `TEST_SUITE.md` for validation procedures
-
----
-
-## Architecture Philosophy
-
-**Magic Hidden by Default**
-- Users see smooth, automated workflows
-- Internal engine complexity is abstracted away
-- n8n orchestration runs silently in the background
-
-**Power for Advanced Users**
-- Hunter tier can access Automations panel
-- View, duplicate, and customize workflows
-- No training required—works out of the box
-
-**No Vendor Lock-In**
-- All workflows are portable n8n designs
-- LLM providers are swappable
-- Fallback mechanisms ensure core features always work
-
----
-
-Built for agencies, consultants, and sales teams who need deep brand and market intelligence at scale. 
-
-**Now with a fully autonomous workflow engine that runs silently behind the scenes.**
-
----
-
-## 💳 Subscription & Tier System
-
-Core DNA uses a unified 4-tier subscription model designed to scale from individual users to enterprises:
-
-### Implementation Details
-- **Free Tier**: 3 DNA extractions/month, 2 LLM providers, basic features
-- **Pro Tier** ($49/mo): Unlimited extractions, all 30+ LLM providers, inference engine, RLM mode
-- **Hunter Tier** ($149/mo): Pro features + workflow editing, auto-post scheduler, team management (3 members)
-- **Agency Tier** (Custom): Unlimited everything, white-label branding, bulk extraction, dedicated support
-
-### Tier System Architecture
-- **Database**: Supabase with RLS (Row-Level Security) for data isolation
-- **Monthly Tracking**: Automatic usage counters with auto-reset on month change
-- **Feature Gating**: Built-in tier checks for extractions, workflows, and advanced features
-- **Graceful Degradation**: Limited features disabled with upgrade prompts, not errors
-- **Team Support**: Agency tier includes unlimited team members with role-based access
-
-### Key Files
-- `src/constants/tiers.ts` — Tier definitions and feature limits
-- `src/services/tierService.ts` — Tier enforcement and usage tracking
-- `src/pages/PricingPage.tsx` — Public pricing page with 4 tiers
-- `supabase/migrations/04_add_tier_system.sql` — Database schema
-
-### Documentation
-- **[TIER_QUICK_START.md](./TIER_QUICK_START.md)** — 5-minute setup guide
-- **[TIER_SYSTEM_IMPLEMENTATION.md](./TIER_SYSTEM_IMPLEMENTATION.md)** — Complete technical docs
-- **[TIER_INTEGRATION_EXAMPLES.md](./TIER_INTEGRATION_EXAMPLES.md)** — 7 code examples
-- **[TIER_DEPLOYMENT_CHECKLIST.md](./TIER_DEPLOYMENT_CHECKLIST.md)** — Deployment verification
-- **[TIER_SYSTEM_INDEX.md](./TIER_SYSTEM_INDEX.md)** — Navigation guide
-
----
+**For licensing inquiries:** legal@coredna.ai
