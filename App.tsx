@@ -75,11 +75,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
+      // Check BOTH BYOK storage AND Settings-based storage
       const apiKeys = localStorage.getItem('apiKeys');
-      const hasKeys = apiKeys && Object.keys(JSON.parse(apiKeys)).length > 0;
+      const hasByokKeys = apiKeys && Object.keys(JSON.parse(apiKeys)).length > 0;
+      
+      const settings = localStorage.getItem('core_dna_settings');
+      const hasSettingsKeys = settings && (
+        JSON.parse(settings)?.llms && Object.keys(JSON.parse(settings).llms).some((k: string) => JSON.parse(settings).llms[k]?.apiKey) ||
+        JSON.parse(settings)?.image && Object.keys(JSON.parse(settings).image).some((k: string) => JSON.parse(settings).image[k]?.apiKey)
+      );
+      
       const dismissed = localStorage.getItem('apiPromptDismissed');
 
-      if (!hasKeys && !dismissed) {
+      // Only show prompt if NO keys are configured anywhere AND not dismissed
+      if (!hasByokKeys && !hasSettingsKeys && !dismissed) {
         setShowApiPrompt(true);
       }
     } catch (e) {

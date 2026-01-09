@@ -21,7 +21,7 @@ export class GeminiService {
     // LLM PROVIDERS
     gemini: {
       type: 'llm',
-      defaultModel: 'gemini-pro',
+      defaultModel: 'gemini-2.0-flash',
       endpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
     },
     openai: {
@@ -534,36 +534,39 @@ const getActiveLLMProvider = () => {
   
   console.log('[getActiveLLMProvider] Starting provider detection...');
   console.log('[getActiveLLMProvider] BYOK apiKeys:', Object.keys(apiKeys));
-  console.log('[getActiveLLMProvider] Old settings.llms:', settings.llms ? Object.keys(settings.llms) : 'none');
+  console.log('[getActiveLLMProvider] Settings.llms:', settings.llms ? Object.keys(settings.llms) : 'none');
   
-  // First try the explicitly set activeLLM
-  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.enabled && settings.llms?.[settings.activeLLM]?.apiKey) {
-    console.log(`[getActiveLLMProvider] Using explicitly set activeLLM: ${settings.activeLLM}`);
+  // PRIORITY 1: Use explicitly set activeLLM from Settings if it has API key
+  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey) {
+    console.log(`[getActiveLLMProvider] ✓ Using explicitly set activeLLM from Settings: ${settings.activeLLM}`);
     return settings.activeLLM;
   }
   
-  // Find first enabled LLM with API key in old settings format
+  // PRIORITY 2: Find first enabled LLM with API key in Settings format
   if (settings.llms) {
     for (const [key, config] of Object.entries(settings.llms)) {
       const llmConfig = config as any;
-      if (llmConfig.enabled && llmConfig.apiKey) {
-        console.log(`[getActiveLLMProvider] Found ${key} in old settings with API key`);
+      if (llmConfig.apiKey) {
+        console.log(`[getActiveLLMProvider] ✓ Found ${key} in Settings with API key`);
         return key;
       }
     }
   }
   
-  // Check BYOK storage for any configured LLM providers
+  // PRIORITY 3: Check BYOK storage for any configured LLM providers
   const llmProviders = ['gemini', 'openai', 'claude', 'mistral', 'groq', 'deepseek', 'xai', 'qwen', 'cohere', 'together', 'openrouter', 'perplexity'];
   for (const provider of llmProviders) {
     if (apiKeys[provider]) {
-      console.log(`[getActiveLLMProvider] Found ${provider} in BYOK storage`);
+      console.log(`[getActiveLLMProvider] ✓ Found ${provider} in BYOK storage`);
       return provider;
     }
   }
   
-  console.warn('[getActiveLLMProvider] No provider found! Using default gemini');
-  // Fallback
+  console.error('[getActiveLLMProvider] ✗ No configured LLM provider found!');
+  console.error('[getActiveLLMProvider] Settings:', settings);
+  console.error('[getActiveLLMProvider] BYOK Keys:', apiKeys);
+  
+  // Fallback - but this will fail when trying to get API key
   return 'gemini';
 };
 
