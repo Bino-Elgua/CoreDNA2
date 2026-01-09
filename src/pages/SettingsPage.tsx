@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toastService } from '../services/toastService';
+import { supabase } from '../services/supabase';
+import { DPAModal } from '../components/DPAModal';
 
 export function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
@@ -175,6 +177,7 @@ export function SettingsPage() {
   const [userTier, setUserTier] = useState<'free' | 'pro' | 'hunter' | 'agency'>('free');
   const [affiliateHubEnabled, setAffiliateHubEnabled] = useState(false);
   const [dpaAccepted, setDpaAccepted] = useState(false);
+  const [showDPAModal, setShowDPAModal] = useState(false);
   const [partnerSlug, setPartnerSlug] = useState('');
 
   useEffect(() => {
@@ -183,7 +186,8 @@ export function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         // Get tier from user_settings or profile
-        setUserTier('agency'); // Demo: assume agency
+        // For now, set to 'agency' to show Affiliate Hub
+        setUserTier('agency');
       }
     };
     loadUserTier();
@@ -191,7 +195,7 @@ export function SettingsPage() {
 
   const handleAffiliateHubToggle = (enabled: boolean) => {
     if (enabled && !dpaAccepted) {
-      // Show DPA modal
+      setShowDPAModal(true);
       return;
     }
     setAffiliateHubEnabled(enabled);
@@ -200,6 +204,7 @@ export function SettingsPage() {
   const handleDPAAccept = () => {
     setDpaAccepted(true);
     setAffiliateHubEnabled(true);
+    setShowDPAModal(false);
   };
 
   return (
@@ -487,6 +492,14 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* DPA Modal */}
+      {showDPAModal && (
+        <DPAModal 
+          onAccept={handleDPAAccept} 
+          onCancel={() => setShowDPAModal(false)}
+        />
       )}
     </div>
   );
