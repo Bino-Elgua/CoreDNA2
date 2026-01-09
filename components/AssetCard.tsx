@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CampaignAsset } from '../types';
+import { CampaignAsset, UserProfile } from '../types';
 import { generateVeoVideo } from '../services/geminiService';
+import { generateVideo, getRemainingVideos, getUserCredits, getVideoTierInfo } from '../services/videoService';
 
 interface AssetCardProps {
   asset: CampaignAsset;
@@ -11,18 +12,41 @@ interface AssetCardProps {
   onUpdateSchedule: (assetId: string, date: string) => void;
   onVideoReady?: (assetId: string, url: string) => void;
   onOpenEditor: (asset: CampaignAsset) => void;
+  user?: UserProfile; // For tier-based access
 }
 
-const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdateContent, onUpdateSchedule, onVideoReady, onOpenEditor }) => {
+const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdateContent, onUpdateSchedule, onVideoReady, onOpenEditor, user }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(asset.content);
   const [showQuickSchedule, setShowQuickSchedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [isAnimating, setIsAnimating] = useState(asset.isGeneratingVideo || false);
+  
+  // Phase 1 & 2: Video generation UI state
+  const [generateVideoMode, setGenerateVideoMode] = useState(false);
+  const [selectedEngine, setSelectedEngine] = useState<'ltx2' | 'sora2' | 'veo3'>('ltx2');
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [videoCount, setVideoCount] = useState(0);
+  const [tierLimit, setTierLimit] = useState(5);
+  const [credits, setCredits] = useState(0);
 
   useEffect(() => {
     setContent(asset.content);
   }, [asset.content]);
+
+  // Load user video quota and credits
+  useEffect(() => {
+    if (user) {
+      const tierInfo = getVideoTierInfo(user.tier);
+      setTierLimit(tierInfo.monthlyLimit === Infinity ? 999 : tierInfo.monthlyLimit);
+      
+      getRemainingVideos(user.id, user.tier).then(remaining => {
+        setVideoCount(tierInfo.monthlyLimit === Infinity ? 0 : (tierInfo.monthlyLimit - remaining));
+      });
+      
+      getUserCredits(user.id).then(c => setCredits(c));
+    }
+  }, [user]);
 
   const handleDownload = () => {
     if (!asset.imageUrl && !asset.videoUrl) return;
@@ -35,21 +59,52 @@ const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdat
   };
 
   const handleDirectSchedule = () => {
-      if (!selectedDate) return;
+       if (!selectedDate) return;
+       
+       const stored = localStorage.getItem('core_dna_schedule');
+       const currentSchedule = stored ? JSON.parse(stored) : [];
+       
+       const newScheduledItem = {
+           ...asset,
+           scheduledAt: new Date(selectedDate).toISOString(),
+           brandName: 'Current Session' // In real app, pull from context
+       };
+       
+       localStorage.setItem('core_dna_schedule', JSON.stringify([...currentSchedule, newScheduledItem]));
+       onUpdateSchedule(asset.id, new Date(selectedDate).toISOString());
+       setShowQuickSchedule(false);
+       alert(`Asset locked in for ${new Date(selectedDate).toLocaleDateString()}!`);
+   };
+
+  // Phase 1 & 3: Generate video from image
+  const handleGenerateVideo = async () => {
+    if (!user || !asset.imageUrl) {
+      alert('Please generate an image first');
+      return;
+    }
+
+    setIsGeneratingVideo(true);
+    try {
+      const result = await generateVideo({
+        imageUrl: asset.imageUrl,
+        prompt: asset.content,
+        engine: selectedEngine,
+        userId: user.id,
+        tier: user.tier,
+      });
+
+      onVideoReady?.(asset.id, result.videoUrl);
+      alert(`✨ Video generated with ${result.engineUsed} (${result.costCredits} credits used)`);
       
-      const stored = localStorage.getItem('core_dna_schedule');
-      const currentSchedule = stored ? JSON.parse(stored) : [];
-      
-      const newScheduledItem = {
-          ...asset,
-          scheduledAt: new Date(selectedDate).toISOString(),
-          brandName: 'Current Session' // In real app, pull from context
-      };
-      
-      localStorage.setItem('core_dna_schedule', JSON.stringify([...currentSchedule, newScheduledItem]));
-      onUpdateSchedule(asset.id, new Date(selectedDate).toISOString());
-      setShowQuickSchedule(false);
-      alert(`Asset locked in for ${new Date(selectedDate).toLocaleDateString()}!`);
+      // Refresh credits display
+      const updatedCredits = await getUserCredits(user.id);
+      setCredits(updatedCredits);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Video generation failed';
+      alert(`Error: ${message}`);
+    } finally {
+      setIsGeneratingVideo(false);
+    }
   };
 
   return (
@@ -67,7 +122,7 @@ const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdat
 
       <div className="flex flex-col h-full">
         {/* Visual Top Area */}
-        <div className="aspect-video bg-black relative overflow-hidden group/img cursor-pointer" onClick={() => onOpenEditor(asset)}>
+        <div className="aspect-video bg-black relative overflow-hidden group/img cursor-pointer">
           {asset.videoUrl ? (
               <video src={asset.videoUrl} controls className="w-full h-full object-cover" poster={asset.imageUrl} />
           ) : asset.isGeneratingImage || isAnimating ? (
@@ -82,6 +137,23 @@ const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdat
           )}
           
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a1120] to-transparent opacity-60 pointer-events-none" />
+          
+          {/* Phase 3: Click-to-Video Overlay */}
+          {user && ['hunter', 'agency'].includes(user.tier) && asset.imageUrl && !asset.videoUrl && (
+            <div className="relative group cursor-pointer" onClick={() => setGenerateVideoMode(true)}>
+              <img src={asset.imageUrl} alt="Campaign asset" className="rounded-lg" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGenerateVideoMode(true);
+                }}
+                title="Turn into video"
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700"
+              >
+                ▶️
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -136,11 +208,82 @@ const AssetCard: React.FC<AssetCardProps> = ({ asset, onRegenerateImage, onUpdat
                      Live Target: {new Date(asset.scheduledAt).toLocaleDateString()}
                  </div>
              )}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
-export default AssetCard;
+             {/* Phase 1: Video Generation Section */}
+             {user && !['free'].includes(user.tier) ? null : (
+               <div className="video-generation-section bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                 <p className="text-sm mb-3">
+                   Powered by <strong>LTX-2</strong> — optimized for social shorts (15 seconds, vertical)
+                 </p>
+
+                 <div>
+                   <label className="flex items-center gap-3">
+                     <input
+                       type="checkbox"
+                       checked={generateVideoMode}
+                       onChange={(e) => setGenerateVideoMode(e.target.checked)}
+                       className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                     />
+                     <span className="text-sm">
+                       Create video from this image ({videoCount}/{tierLimit} this month)
+                     </span>
+                   </label>
+                   {user?.tier === 'free' && (
+                     <p className="text-xs text-gray-600 mt-2">
+                       Limited to 5 videos/month. Upgrade for more.
+                     </p>
+                   )}
+                 </div>
+
+                 {/* Phase 2: Premium Engine Selection (Hunter/Agency Only) */}
+                 {generateVideoMode && user && ['hunter', 'agency'].includes(user.tier) && generateVideo && (
+                   <div className="premium-engine-selector mt-4">
+                     <label className="block text-sm font-medium mb-2">Video Engine</label>
+                     <select
+                       value={selectedEngine}
+                       onChange={(e) => setSelectedEngine(e.target.value as any)}
+                       className="w-full px-4 py-2 border rounded-lg"
+                     >
+                       <option value="ltx2">Standard (LTX-2) — 1 credit</option>
+                       <option value="sora2">Premium (Sora 2 Pro) — 5 credits</option>
+                       <option value="veo3">Premium (Veo 3) — 5 credits</option>
+                     </select>
+                     {selectedEngine !== 'ltx2' && (
+                       <p className="text-xs text-blue-700 mt-2">
+                         ✨ Premium engines offer superior realism, physics, and coherence
+                       </p>
+                     )}
+                   </div>
+                 )}
+
+                 {generateVideoMode && (
+                   <button
+                     onClick={handleGenerateVideo}
+                     disabled={isGeneratingVideo || !asset.imageUrl}
+                     className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                   >
+                     {isGeneratingVideo ? 'Generating...' : 'Generate Video'}
+                   </button>
+                 )}
+               </div>
+             )}
+
+             {/* Phase 6: Legal Disclosure (After generation) */}
+             {asset.videoUrl && (
+               <div className="text-xs text-gray-600 mt-2">
+                 Generated with: <strong>
+                   {selectedEngine === 'ltx2' ? 'LTX-2 (open-source)' :
+                    selectedEngine === 'sora2' ? 'Sora 2 Pro (OpenAI)' :
+                    'Veo 3 (Google)'}
+                 </strong>
+                 {' — You own this content'}
+               </div>
+             )}
+             </div>
+             </div>
+             </div>
+             </motion.div>
+             );
+             };
+
+             export default AssetCard;

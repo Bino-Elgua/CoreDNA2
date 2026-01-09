@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrandDNA, CampaignAsset, SavedCampaign } from '../types';
+import { BrandDNA, CampaignAsset, SavedCampaign, UserProfile } from '../types';
 import { generateCampaignAssets, generateAssetImage, runAgentHiveCampaign } from '../services/geminiService';
 import AssetCard from '../components/AssetCard';
 import AssetEditor from '../components/AssetEditor';
@@ -24,6 +24,7 @@ const CampaignsPage: React.FC = () => {
   const [savedCampaigns, setSavedCampaigns] = useState<SavedCampaign[]>([]);
   const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
   const [focusedAsset, setFocusedAsset] = useState<CampaignAsset | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | undefined>(undefined);
 
   useEffect(() => {
     if (location.state?.dna) {
@@ -44,6 +45,18 @@ const CampaignsPage: React.FC = () => {
     const stored = localStorage.getItem('core_dna_saved_campaigns');
     if (stored) {
         try { setSavedCampaigns(JSON.parse(stored)); } catch(e) { console.error(e); }
+    }
+  }, []);
+
+  // Load user profile for tier-based video features
+  useEffect(() => {
+    const storedUser = localStorage.getItem('core_dna_user_profile');
+    if (storedUser) {
+      try {
+        setUserProfile(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      }
     }
   }, []);
 
@@ -225,6 +238,7 @@ const CampaignsPage: React.FC = () => {
                         onUpdateSchedule={(id, date) => setAssets(prev => prev.map(a => a.id === id ? { ...a, scheduledAt: date } : a))}
                         onVideoReady={(id, url) => setAssets(prev => prev.map(a => a.id === id ? { ...a, videoUrl: url } : a))}
                         onOpenEditor={(a) => setFocusedAsset(a)}
+                        user={userProfile}
                     />
                 ))}
             </motion.div>

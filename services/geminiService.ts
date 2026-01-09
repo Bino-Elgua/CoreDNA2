@@ -530,13 +530,14 @@ export const geminiService = new GeminiService();
 // Helper to get the active LLM provider
 const getActiveLLMProvider = () => {
   const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+  const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
   
   // First try the explicitly set activeLLM
   if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.enabled && settings.llms?.[settings.activeLLM]?.apiKey) {
     return settings.activeLLM;
   }
   
-  // Find first enabled LLM with API key
+  // Find first enabled LLM with API key in old settings format
   if (settings.llms) {
     for (const [key, config] of Object.entries(settings.llms)) {
       const llmConfig = config as any;
@@ -546,8 +547,17 @@ const getActiveLLMProvider = () => {
     }
   }
   
+  // Check BYOK storage for any configured LLM providers
+  const llmProviders = ['gemini', 'openai', 'claude', 'mistral', 'groq', 'deepseek', 'xai', 'qwen', 'cohere', 'together', 'openrouter', 'perplexity'];
+  for (const provider of llmProviders) {
+    if (apiKeys[provider]) {
+      console.log(`[getActiveLLMProvider] Found ${provider} in BYOK storage`);
+      return provider;
+    }
+  }
+  
   // Fallback
-  return 'openai';
+  return 'gemini';
 };
 
 // Wrapper exports for backwards compatibility

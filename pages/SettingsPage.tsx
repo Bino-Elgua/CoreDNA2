@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GlobalSettings, LLMProviderId, ImageProviderId, VoiceProviderId, WorkflowProviderId } from '../types';
+import { GlobalSettings, LLMProviderId, ImageProviderId, VoiceProviderId, WorkflowProviderId, VideoProviderId } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { workflowProviderManager, WorkflowProviderConfig } from '../services/workflowProvider';
 import { getSettings, saveSettings } from '../services/settingsService';
 import HealthCheckInput from '../components/HealthCheckInput';
 import { HealthCheckResult } from '../services/healthCheckService';
+import { ALL_VIDEO_PROVIDERS } from '../src/constants/videoProviders';
 
 const INITIAL_SETTINGS: GlobalSettings = {
     theme: 'system',
@@ -15,6 +16,7 @@ const INITIAL_SETTINGS: GlobalSettings = {
     activeLLM: 'google',
     activeImageGen: 'google',
     activeVoice: 'openai',
+    activeVideo: 'ltx2',
     activeWorkflow: 'n8n',
     rlm: { enabled: false, rootModel: 'google', recursiveModel: 'openai', maxDepth: 5, contextWindow: 200000 },
     inference: {
@@ -85,26 +87,50 @@ const INITIAL_SETTINGS: GlobalSettings = {
         hunyuan_image: { provider: 'hunyuan_image', enabled: false, apiKey: '' },
     },
     voice: {
-        elevenlabs: { provider: 'elevenlabs', enabled: false, apiKey: '' },
-        openai: { provider: 'openai', enabled: false, apiKey: '' },
-        playht: { provider: 'playht', enabled: false, apiKey: '' },
-        cartesia: { provider: 'cartesia', enabled: false, apiKey: '' }, // Fastest TTS
-        resemble: { provider: 'resemble', enabled: false, apiKey: '' }, // NEW
-        murf: { provider: 'murf', enabled: false, apiKey: '' }, // NEW
-        wellsaid: { provider: 'wellsaid', enabled: false, apiKey: '' }, // NEW
-        deepgram: { provider: 'deepgram', enabled: false, apiKey: '' },
-        lmnt: { provider: 'lmnt', enabled: false, apiKey: '' },
-        fish: { provider: 'fish', enabled: false, apiKey: '' },
-        rime: { provider: 'rime', enabled: false, apiKey: '' },
-        neets: { provider: 'neets', enabled: false, apiKey: '' },
-        speechify: { provider: 'speechify', enabled: false, apiKey: '' },
-        amazon_polly: { provider: 'amazon_polly', enabled: false, apiKey: '' },
-        google_tts: { provider: 'google_tts', enabled: false, apiKey: '' },
-        azure: { provider: 'azure', enabled: false, apiKey: '', endpoint: '' },
-        piper: { provider: 'piper', enabled: false, endpoint: 'http://localhost:5000' },
-        custom: { provider: 'custom', enabled: false, endpoint: '' },
-    },
-    workflows: {
+         elevenlabs: { provider: 'elevenlabs', enabled: false, apiKey: '' },
+         openai: { provider: 'openai', enabled: false, apiKey: '' },
+         playht: { provider: 'playht', enabled: false, apiKey: '' },
+         cartesia: { provider: 'cartesia', enabled: false, apiKey: '' }, // Fastest TTS
+         resemble: { provider: 'resemble', enabled: false, apiKey: '' }, // NEW
+         murf: { provider: 'murf', enabled: false, apiKey: '' }, // NEW
+         wellsaid: { provider: 'wellsaid', enabled: false, apiKey: '' }, // NEW
+         deepgram: { provider: 'deepgram', enabled: false, apiKey: '' },
+         lmnt: { provider: 'lmnt', enabled: false, apiKey: '' },
+         fish: { provider: 'fish', enabled: false, apiKey: '' },
+         rime: { provider: 'rime', enabled: false, apiKey: '' },
+         neets: { provider: 'neets', enabled: false, apiKey: '' },
+         speechify: { provider: 'speechify', enabled: false, apiKey: '' },
+         amazon_polly: { provider: 'amazon_polly', enabled: false, apiKey: '' },
+         google_tts: { provider: 'google_tts', enabled: false, apiKey: '' },
+         azure: { provider: 'azure', enabled: false, apiKey: '', endpoint: '' },
+         piper: { provider: 'piper', enabled: false, endpoint: 'http://localhost:5000' },
+         custom: { provider: 'custom', enabled: false, endpoint: '' },
+     },
+     video: {
+         sora2: { provider: 'sora2', enabled: false, apiKey: '' },
+         veo3: { provider: 'veo3', enabled: false, apiKey: '' },
+         runway: { provider: 'runway', enabled: false, apiKey: '' },
+         kling: { provider: 'kling', enabled: false, apiKey: '' },
+         luma: { provider: 'luma', enabled: false, apiKey: '' },
+         ltx2: { provider: 'ltx2', enabled: false, apiKey: '' },
+         wan: { provider: 'wan', enabled: false, apiKey: '' },
+         hunyuan: { provider: 'hunyuan', enabled: false, apiKey: '' },
+         mochi: { provider: 'mochi', enabled: false, apiKey: '' },
+         seedance: { provider: 'seedance', enabled: false, apiKey: '' },
+         pika: { provider: 'pika', enabled: false, apiKey: '' },
+         hailuo: { provider: 'hailuo', enabled: false, apiKey: '' },
+         pixverse: { provider: 'pixverse', enabled: false, apiKey: '' },
+         higgsfield: { provider: 'higgsfield', enabled: false, apiKey: '' },
+         heygen: { provider: 'heygen', enabled: false, apiKey: '' },
+         synthesia: { provider: 'synthesia', enabled: false, apiKey: '' },
+         deepbrain: { provider: 'deepbrain', enabled: false, apiKey: '' },
+         colossyan: { provider: 'colossyan', enabled: false, apiKey: '' },
+         replicate: { provider: 'replicate', enabled: false, apiKey: '' },
+         fal: { provider: 'fal', enabled: false, apiKey: '' },
+         fireworks: { provider: 'fireworks', enabled: false, apiKey: '' },
+         wavespeed: { provider: 'wavespeed', enabled: false, apiKey: '' },
+     },
+     workflows: {
         n8n: { provider: 'n8n', enabled: false, webhookUrl: '', scheduleWebhookUrl: '' },
         zapier: { provider: 'zapier', enabled: false, webhookUrl: '', postingWebhookUrl: '' },
         make: { provider: 'make', enabled: false, webhookUrl: '', scheduleWebhookUrl: '' },
@@ -211,11 +237,35 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
     tray: { title: 'Tray.io', icon: '🎯', fields: ['webhookUrl'], getKeyUrl: 'https://tray.io/' },
     dify_workflows: { title: 'Dify Workflows', icon: '🎯', fields: ['apiKey', 'webhookUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
     custom_rag: { title: 'Custom RAG', icon: '🗂️', fields: ['webhookUrl'] },
-};
+
+    // Video
+    sora2: { title: 'OpenAI Sora 2', icon: '🎬', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    veo3: { title: 'Google Veo 3', icon: '🌟', fields: ['apiKey'], getKeyUrl: 'https://cloud.google.com/vertex-ai' },
+    runway: { title: 'Runway Gen-4', icon: '🚀', fields: ['apiKey'], getKeyUrl: 'https://www.runwayml.com/' },
+    kling: { title: 'Kling AI 2.6', icon: '✨', fields: ['apiKey'], getKeyUrl: 'https://klingai.com/' },
+    luma: { title: 'Luma Dream Machine', icon: '🌀', fields: ['apiKey'], getKeyUrl: 'https://lumalabs.ai/' },
+    ltx2: { title: 'Lightricks LTX-2', icon: '⚡', fields: ['apiKey'], getKeyUrl: 'https://fal.ai/dashboard' },
+    wan: { title: 'Wan 2.6', icon: '🌊', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/' },
+    hunyuan: { title: 'HunyuanVideo', icon: '🎯', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/' },
+    mochi: { title: 'Mochi', icon: '🍡', fields: ['apiKey'], getKeyUrl: 'https://fal.ai/dashboard' },
+    seedance: { title: 'Seedance 1.5', icon: '🌱', fields: ['apiKey'], getKeyUrl: 'https://www.seedance.com/' },
+    pika: { title: 'Pika Labs 2.2', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://pika.art/' },
+    hailuo: { title: 'Hailuo 2.3', icon: '🎭', fields: ['apiKey'], getKeyUrl: 'https://www.hailuo.ai/' },
+    pixverse: { title: 'Pixverse', icon: '🖼️', fields: ['apiKey'], getKeyUrl: 'https://www.pixverse.ai/' },
+    higgsfield: { title: 'Higgsfield', icon: '🌠', fields: ['apiKey'], getKeyUrl: 'https://www.higgsfield.ai/' },
+    heygen: { title: 'HeyGen', icon: '👤', fields: ['apiKey'], getKeyUrl: 'https://www.heygen.com/api' },
+    synthesia: { title: 'Synthesia', icon: '🎬', fields: ['apiKey'], getKeyUrl: 'https://www.synthesia.io/api' },
+    deepbrain: { title: 'DeepBrain AI', icon: '🧠', fields: ['apiKey'], getKeyUrl: 'https://www.deepbrainai.io/api' },
+    colossyan: { title: 'Colossyan', icon: '📚', fields: ['apiKey'], getKeyUrl: 'https://www.colossyan.com/api' },
+    replicate: { title: 'Replicate (Multi)', icon: '🔄', fields: ['apiKey'], getKeyUrl: 'https://replicate.com/api' },
+    fal: { title: 'fal.ai (Multi)', icon: '✨', fields: ['apiKey'], getKeyUrl: 'https://fal.ai/dashboard' },
+    fireworks: { title: 'Fireworks.ai (Multi)', icon: '🔥', fields: ['apiKey'], getKeyUrl: 'https://fireworks.ai/' },
+    wavespeed: { title: 'WaveSpeedAI (Multi)', icon: '⚙️', fields: ['apiKey'], getKeyUrl: 'https://wavespeed.io/' },
+    };
 
 const SettingsPage: React.FC = () => {
      const navigate = useNavigate();
-     const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'workflow' | 'agency' | 'rlm' | 'inference' | 'website'>('llm');
+     const [activeTab, setActiveTab] = useState<'llm' | 'image' | 'voice' | 'video' | 'workflow' | 'agency' | 'rlm' | 'inference' | 'website'>('llm');
      const [settings, setSettings] = useState<GlobalSettings>(INITIAL_SETTINGS);
      const [hasChanges, setHasChanges] = useState(false);
 
@@ -225,17 +275,18 @@ const SettingsPage: React.FC = () => {
             try {
                 const stored = await getSettings();
                 if (stored) {
-                    setSettings(prev => ({
-                        ...prev,
-                        ...stored,
-                        llms: { ...prev.llms, ...stored.llms },
-                        image: { ...prev.image, ...stored.image },
-                        voice: { ...prev.voice, ...stored.voice },
-                        workflows: { ...prev.workflows, ...stored.workflows },
-                        whiteLabel: { ...prev.whiteLabel, ...stored.whiteLabel },
-                        inference: { ...prev.inference, ...stored.inference }
-                    }));
-                }
+                     setSettings(prev => ({
+                         ...prev,
+                         ...stored,
+                         llms: { ...prev.llms, ...stored.llms },
+                         image: { ...prev.image, ...stored.image },
+                         voice: { ...prev.voice, ...stored.voice },
+                         video: { ...prev.video, ...stored.video },
+                         workflows: { ...prev.workflows, ...stored.workflows },
+                         whiteLabel: { ...prev.whiteLabel, ...stored.whiteLabel },
+                         inference: { ...prev.inference, ...stored.inference }
+                     }));
+                 }
             } catch (e) {
                 console.error("Failed to load settings", e);
             }
@@ -522,6 +573,7 @@ const SettingsPage: React.FC = () => {
                     <TabButton id="llm" label="Text Intelligence" icon={<span>🧠</span>} />
                     <TabButton id="image" label="Image Generators" icon={<span>🎨</span>} />
                     <TabButton id="voice" label="Voice / TTS" icon={<span>🔊</span>} />
+                    <TabButton id="video" label="Video Generation" icon={<span>🎬</span>} />
                     <TabButton id="workflow" label="Automations" icon={<span>⚡</span>} />
                     <TabButton id="inference" label="Inference Engine" icon={<span>⚙️</span>} />
                     <TabButton id="website" label="Website Options" icon={<span>🌐</span>} />
@@ -634,6 +686,44 @@ const SettingsPage: React.FC = () => {
                                             onToggle={() => updateProvider('voice', key, { enabled: !settings.voice[key].enabled })}
                                         />
                                     ))}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'video' && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-xl flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-bold text-indigo-800 dark:text-indigo-400">Default Video Provider</h3>
+                                        <p className="text-sm text-indigo-700 dark:text-indigo-500">Select your primary video generation provider.</p>
+                                    </div>
+                                    <select 
+                                        value={settings.activeVideo}
+                                        onChange={(e) => {
+                                            setSettings(prev => ({...prev, activeVideo: e.target.value as VideoProviderId}));
+                                            setHasChanges(true);
+                                        }}
+                                        className="p-2 rounded bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-700 font-bold"
+                                    >
+                                        {Object.keys(settings.video).map(k => (
+                                            <option key={k} value={k}>{PROVIDER_META[k]?.title || k}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {Object.keys(settings.video).map(key => {
+                                        const provider = ALL_VIDEO_PROVIDERS.find(p => p.id === key);
+                                        return (
+                                            <ProviderCard 
+                                                key={key} 
+                                                id={key} 
+                                                category="video"
+                                                data={settings.video[key]} 
+                                                isActive={settings.activeVideo === key}
+                                                onToggle={() => updateProvider('video', key, { enabled: !settings.video[key].enabled })}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             </motion.div>
                         )}

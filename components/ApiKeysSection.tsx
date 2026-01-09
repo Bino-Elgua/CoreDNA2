@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toastService } from '../services/toastService';
+import { VideoProvidersSection } from './VideoProvidersSection';
 
 interface Provider {
   id: string;
@@ -114,6 +115,7 @@ const providerCategories = {
 };
 
 export function ApiKeysSection() {
+  const [activeTab, setActiveTab] = useState<'providers' | 'video'>('providers');
   const [activeCategory, setActiveCategory] = useState<keyof typeof providerCategories>('llm');
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
@@ -161,9 +163,39 @@ export function ApiKeysSection() {
 
   return (
     <div className="space-y-6">
-      {/* Category Tabs */}
+      {/* Top-level Tabs (Providers vs Video) */}
       <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('providers')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'providers' 
+                ? 'border-blue-500 text-blue-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            🔧 All Providers
+          </button>
+          <button
+            onClick={() => setActiveTab('video')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'video' 
+                ? 'border-purple-500 text-purple-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            🎬 Video Generation
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'video' ? (
+        <VideoProvidersSection />
+      ) : (
+        <div className="space-y-6">
+          {/* Category Tabs */}
+          <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
+            <nav className="flex space-x-8">
           {categoryKeys.map(key => {
             const category = providerCategories[key];
             return (
@@ -366,6 +398,8 @@ export function ApiKeysSection() {
           </button>
         </div>
       </div>
+        </div>
+      )}
     </div>
   );
 }

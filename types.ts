@@ -155,6 +155,8 @@ export type ImageProviderId = 'google' | 'openai' | 'openai_dalle_next' | 'stabi
 
 export type VoiceProviderId = 'elevenlabs' | 'openai' | 'playht' | 'cartesia' | 'resemble' | 'murf' | 'wellsaid' | 'deepgram' | 'lmnt' | 'fish' | 'rime' | 'neets' | 'speechify' | 'amazon_polly' | 'google_tts' | 'azure' | 'piper' | 'custom';
 
+export type VideoProviderId = 'sora2' | 'veo3' | 'runway' | 'kling' | 'luma' | 'ltx2' | 'wan' | 'hunyuan' | 'mochi' | 'seedance' | 'pika' | 'hailuo' | 'pixverse' | 'higgsfield' | 'heygen' | 'synthesia' | 'deepbrain' | 'colossyan' | 'replicate' | 'fal' | 'fireworks' | 'wavespeed';
+
 export type WorkflowProviderId = 'n8n' | 'zapier' | 'make' | 'activepieces' | 'langchain' | 'pipedream' | 'relay' | 'integrately' | 'pabbly' | 'tray' | 'dify' | 'custom_rag';
 
 export interface ProviderConfig {
@@ -214,6 +216,7 @@ export interface GlobalSettings {
     activeLLM: LLMProviderId;
     activeImageGen: ImageProviderId;
     activeVoice: VoiceProviderId;
+    activeVideo: VideoProviderId;
     activeWorkflow: WorkflowProviderId;
     rlm: RLMConfig;
     inference: InferenceEngineConfig;
@@ -221,6 +224,7 @@ export interface GlobalSettings {
     llms: Record<string, ProviderConfig>;
     image: Record<string, ProviderConfig>;
     voice: Record<string, ProviderConfig>;
+    video: Record<string, ProviderConfig>;
     workflows: Record<string, ProviderConfig>;
 }
 
