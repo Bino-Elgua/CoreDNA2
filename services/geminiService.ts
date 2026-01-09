@@ -532,8 +532,13 @@ const getActiveLLMProvider = () => {
   const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
   const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
   
+  console.log('[getActiveLLMProvider] Starting provider detection...');
+  console.log('[getActiveLLMProvider] BYOK apiKeys:', Object.keys(apiKeys));
+  console.log('[getActiveLLMProvider] Old settings.llms:', settings.llms ? Object.keys(settings.llms) : 'none');
+  
   // First try the explicitly set activeLLM
   if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.enabled && settings.llms?.[settings.activeLLM]?.apiKey) {
+    console.log(`[getActiveLLMProvider] Using explicitly set activeLLM: ${settings.activeLLM}`);
     return settings.activeLLM;
   }
   
@@ -542,6 +547,7 @@ const getActiveLLMProvider = () => {
     for (const [key, config] of Object.entries(settings.llms)) {
       const llmConfig = config as any;
       if (llmConfig.enabled && llmConfig.apiKey) {
+        console.log(`[getActiveLLMProvider] Found ${key} in old settings with API key`);
         return key;
       }
     }
@@ -556,6 +562,7 @@ const getActiveLLMProvider = () => {
     }
   }
   
+  console.warn('[getActiveLLMProvider] No provider found! Using default gemini');
   // Fallback
   return 'gemini';
 };
