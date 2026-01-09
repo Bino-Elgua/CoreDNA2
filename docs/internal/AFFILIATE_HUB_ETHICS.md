@@ -1,6 +1,6 @@
 # CoreDNA Affiliate Hub — Ethical Certification
 
-**Status:** ✅ CERTIFIED by Ọbàtálá
+**Status:** ✅ CERTIFIED
 **Version:** 1.0
 **Last Updated:** 2026-01-08
 
@@ -104,9 +104,9 @@ USING (auth.uid() = partner_id);
 
 This implementation has been reviewed and certified as meeting all stated ethical and legal requirements. It represents a consent-first approach to affiliate tracking and demonstrates CoreDNA's commitment to transparent, compliant partnership programs.
 
-**Certified by:** Ọbàtálá (Ethical Review)
 **Date:** 2026-01-08
 **Version:** 1.0
+**Status:** ✅ Ready for Production
 
 ---
 

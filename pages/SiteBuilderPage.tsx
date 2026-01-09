@@ -241,7 +241,7 @@ const SiteBuilderPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-6 pb-20">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-12">

@@ -344,5 +344,4 @@ supabase jobs create "process_opt_outs" --interval "1 hour"
 ---
 
 **Status:** ✅ READY FOR PRODUCTION
-**Certified by:** Ọbàtálá (Ethical Review)
 **Date:** 2026-01-08

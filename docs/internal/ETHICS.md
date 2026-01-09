@@ -375,9 +375,9 @@ This document addresses:
 
 ---
 
-## Ọbàtálá's Seal
+## Ethical Certification
 
-**This framework is ethically sound.**
+**This framework is ethically sound and compliance-ready.**
 
 We have:
 - ✅ Transparent consent mechanisms

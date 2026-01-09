@@ -155,9 +155,9 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
     huggingface: { title: 'HuggingFace', icon: '🤗', fields: ['apiKey'], getKeyUrl: 'https://huggingface.co/settings/tokens' },
 
     // Image
-    google: { title: 'Google Images', icon: '🔮', fields: ['apiKey'], getKeyUrl: 'https://aistudio.google.com/app/apikey' },
-    openai: { title: 'DALL-E 3', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
-    xai: { title: 'xAI Image', icon: '🐙', fields: ['apiKey'], getKeyUrl: 'https://console.x.ai/' },
+    google_imagen: { title: 'Google Imagen', icon: '🔮', fields: ['apiKey'], getKeyUrl: 'https://aistudio.google.com/app/apikey' },
+    openai_dalle: { title: 'DALL-E 3', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    xai_image: { title: 'xAI Image', icon: '🐙', fields: ['apiKey'], getKeyUrl: 'https://console.x.ai/' },
     stability: { title: 'Stability AI', icon: '🎨', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/account/keys' },
     sd3: { title: 'Stable Diffusion 3', icon: '🖼️', fields: ['apiKey'], getKeyUrl: 'https://platform.stability.ai/' },
     openai_dalle_next: { title: 'DALL-E 4 / GPT Image', icon: '🎭', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/' },
@@ -179,8 +179,8 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
     hunyuan_image: { title: 'Hunyuan', icon: '🌤️', fields: ['apiKey'], getKeyUrl: 'https://cloud.tencent.com/product/hunyuan' },
 
     // Voice
-    openai: { title: 'OpenAI TTS', icon: '🤖', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
-    elevenlabs: { title: 'ElevenLabs', icon: '🎙️', fields: ['apiKey'], getKeyUrl: 'https://elevenlabs.io/app/settings/api-keys' },
+    openai_tts: { title: 'OpenAI TTS', icon: '🤖', fields: ['apiKey'], getKeyUrl: 'https://platform.openai.com/api-keys' },
+    elevenlabs_voice: { title: 'ElevenLabs', icon: '🎙️', fields: ['apiKey'], getKeyUrl: 'https://elevenlabs.io/app/settings/api-keys' },
     playht: { title: 'PlayHT', icon: '▶️', fields: ['apiKey'], getKeyUrl: 'https://play.ht/studio/api-access' },
     cartesia: { title: 'Cartesia', icon: '🎵', fields: ['apiKey'], getKeyUrl: 'https://play.cartesia.ai/' },
     resemble: { title: 'Resemble AI', icon: '🔊', fields: ['apiKey'], getKeyUrl: 'https://www.resemble.ai/' },
@@ -209,7 +209,7 @@ const PROVIDER_META: Record<string, { title: string, icon: string, fields: strin
     integrately: { title: 'Integrately', icon: '🔀', fields: ['webhookUrl'], getKeyUrl: 'https://integrately.com/' },
     pabbly: { title: 'Pabbly', icon: '📦', fields: ['webhookUrl'], getKeyUrl: 'https://www.pabbly.com/connect/' },
     tray: { title: 'Tray.io', icon: '🎯', fields: ['webhookUrl'], getKeyUrl: 'https://tray.io/' },
-    dify: { title: 'Dify Workflows', icon: '🎯', fields: ['apiKey', 'webhookUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
+    dify_workflows: { title: 'Dify Workflows', icon: '🎯', fields: ['apiKey', 'webhookUrl'], getKeyUrl: 'https://cloud.dify.ai/' },
     custom_rag: { title: 'Custom RAG', icon: '🗂️', fields: ['webhookUrl'] },
 };
 

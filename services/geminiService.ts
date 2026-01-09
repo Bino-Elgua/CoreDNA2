@@ -127,20 +127,56 @@ export class GeminiService {
   };
 
   /**
-   * Get API key from localStorage (user-provided BYOK)
-   */
+    * Get API key from localStorage (user-provided BYOK)
+    */
   private getApiKey(provider: string): string {
-    const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
-    const key = apiKeys[provider];
-
-    if (!key) {
-      const errorMsg = `${provider.toUpperCase()} API key not configured. Please add it in Settings → API Keys.`;
-      toastService.showToast(`⚠️ ${errorMsg}`, 'error');
-      throw new Error(errorMsg);
-    }
-
-    return key;
-  }
+     try {
+       // Try new settings structure first
+       const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+       
+       console.log(`[GeminiService] Getting API key for provider: ${provider}`);
+       console.log(`[GeminiService] Settings LLMs:`, settings.llms ? Object.keys(settings.llms) : 'none');
+       console.log(`[GeminiService] Checking llms.${provider}:`, settings.llms?.[provider]);
+       
+       // Check LLM providers
+       if (settings.llms?.[provider]?.apiKey) {
+         console.log(`[GeminiService] Found LLM API key for ${provider}`);
+         return settings.llms[provider].apiKey;
+       }
+       
+       // Check Image providers
+       if (settings.image?.[provider]?.apiKey) {
+         console.log(`[GeminiService] Found Image API key for ${provider}`);
+         return settings.image[provider].apiKey;
+       }
+       
+       // Check Voice providers
+       if (settings.voice?.[provider]?.apiKey) {
+         console.log(`[GeminiService] Found Voice API key for ${provider}`);
+         return settings.voice[provider].apiKey;
+       }
+       
+       // Fallback to old flat structure
+       const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+       if (apiKeys[provider]) {
+         console.log(`[GeminiService] Found API key in old flat structure for ${provider}`);
+         return apiKeys[provider];
+       }
+       
+       // No key found
+       console.error(`[GeminiService] No API key found for ${provider}`);
+       console.error(`[GeminiService] Settings object:`, settings);
+       const errorMsg = `${provider.toUpperCase()} API key not configured. Please add it in Settings.`;
+       throw new Error(errorMsg);
+     } catch (e: any) {
+       if (e.message.includes('API key not configured')) {
+         throw e;
+       }
+       const errorMsg = `Failed to retrieve API key for ${provider}: ${e?.message}`;
+       console.error(errorMsg);
+       throw new Error(errorMsg);
+     }
+   }
 
   /**
    * Main generate method - routes to appropriate provider
@@ -228,7 +264,6 @@ export class GeminiService {
       case 'openrouter':
       case 'together':
       case 'perplexity':
-      case 'mistral':
         // OpenAI-compatible providers (use same API format)
         return await this.callOpenAICompatible(provider, apiKey, model, prompt, options);
       default:
@@ -492,13 +527,70 @@ export class GeminiService {
 
 export const geminiService = new GeminiService();
 
+// Helper to get the active LLM provider
+const getActiveLLMProvider = () => {
+  const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+  
+  // First try the explicitly set activeLLM
+  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.enabled && settings.llms?.[settings.activeLLM]?.apiKey) {
+    return settings.activeLLM;
+  }
+  
+  // Find first enabled LLM with API key
+  if (settings.llms) {
+    for (const [key, config] of Object.entries(settings.llms)) {
+      const llmConfig = config as any;
+      if (llmConfig.enabled && llmConfig.apiKey) {
+        return key;
+      }
+    }
+  }
+  
+  // Fallback
+  return 'openai';
+};
+
 // Wrapper exports for backwards compatibility
-export const analyzeBrandDNA = (url: string) => geminiService.generate(`Analyze brand DNA for ${url}`);
-export const findLeadsWithMaps = (niche: string) => geminiService.generate(`Find leads in ${niche}`);
-export const runCloserAgent = (data: any) => geminiService.generate(`Process closer agent with data`);
-export const generateAssetImage = (prompt: string) => Promise.resolve({ url: 'https://via.placeholder.com/300' });
-export const generateCampaignAssets = (dna: any) => geminiService.generate(`Generate campaign assets`);
-export const runAgentHiveCampaign = (data: any) => geminiService.generate(`Run agent hive campaign`);
+export const analyzeBrandDNA = (url: string, brandName?: string) => {
+  const provider = getActiveLLMProvider();
+  const prompt = `Analyze the brand DNA for: ${url}${brandName ? ` (Brand: ${brandName})` : ''}. Extract visual style, tone, color palette, audience, mission, and key differentiators.`;
+  return geminiService.generate(provider, prompt);
+};
+
+export const findLeadsWithMaps = (niche: string, latitude?: number, longitude?: number) => {
+  const provider = getActiveLLMProvider();
+  const locationStr = latitude && longitude ? ` near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : '';
+  const prompt = `Find top 10 businesses in the "${niche}" niche${locationStr}. Include name, rating, address, website, contact info (email/phone), and social profiles. Format as JSON array.`;
+  return geminiService.generate(provider, prompt);
+};
+
+export const runCloserAgent = (lead: any, sender?: any) => {
+  const provider = getActiveLLMProvider();
+  const leadInfo = JSON.stringify(lead).substring(0, 500);
+  const senderInfo = sender ? JSON.stringify(sender).substring(0, 500) : 'Generic portfolio';
+  const prompt = `Generate a complete closer portfolio for lead: ${leadInfo}. Sender profile: ${senderInfo}. Include target identity extraction, 3 sample social posts with image prompts, personalized email outreach, and 3 service packages.`;
+  return geminiService.generate(provider, prompt);
+};
+
+export const generateAssetImage = (prompt: string) => {
+  const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+  const provider = settings.activeImageGen || 'openai';
+  return geminiService.generate(provider, `Generate image: ${prompt}`).then(url => ({ url }));
+};
+
+export const generateCampaignAssets = (dna: any, goal?: string, channels?: string[], count?: number, tone?: string) => {
+  const provider = getActiveLLMProvider();
+  const dnaStr = JSON.stringify(dna).substring(0, 300);
+  const prompt = `Generate ${count || 5} campaign assets for brand "${dna.name}" with goal "${goal || 'brand awareness'}". Channels: ${channels?.join(', ') || 'multi-channel'}. Tone: ${tone || 'default'}. Include titles, copy, image prompts. Format as JSON array.`;
+  return geminiService.generate(provider, prompt);
+};
+
+export const runAgentHiveCampaign = (dna: any, goal: string, channel: string, statusCallback?: (msg: string) => void) => {
+  const provider = getActiveLLMProvider();
+  if (statusCallback) statusCallback(`Hive agent processing ${channel}...`);
+  const prompt = `Create a single campaign asset for brand "${dna.name}" for ${channel}. Goal: ${goal}. Include title, compelling copy tailored to ${channel}, and a detailed image prompt. Return as JSON object.`;
+  return geminiService.generate(provider, prompt);
+};
 export const createBrandChat = () => geminiService;
 export const generateAgentSystemPrompt = (config: any) => geminiService.generate(`Generate agent prompt`);
 export const createAgentChat = () => geminiService;

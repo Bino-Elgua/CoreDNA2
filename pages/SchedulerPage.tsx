@@ -225,7 +225,7 @@ const SchedulerPage: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col">
+        <div className="container mx-auto px-4 py-8 pb-20 min-h-screen flex flex-col">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-display font-black uppercase tracking-tight text-white">Neural Scheduler</h1>

@@ -62,8 +62,17 @@ const ExtractPage: React.FC = () => {
             const profiles = existing ? JSON.parse(existing) : [];
             profiles.unshift(dna);
             localStorage.setItem('core_dna_profiles', JSON.stringify(profiles));
-        } catch (e) {
-            alert("Extraction failed. Please try again.");
+        } catch (e: any) {
+            const errorMsg = e?.message || "Extraction failed";
+            console.error("Extraction error:", e);
+            
+            if (errorMsg.includes('API key') || errorMsg.includes('apiKey')) {
+                alert("No API key configured. Please add an LLM API key in Settings first.");
+            } else if (errorMsg.includes('fetch') || errorMsg.includes('network')) {
+                alert("Network error. Please check your internet connection and try again.");
+            } else {
+                alert(`Extraction failed: ${errorMsg}`);
+            }
         } finally {
             setLoading(false);
         }
