@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../../services/supabaseClient';
 
 export interface AffiliateVisitorData {
   ip: string;

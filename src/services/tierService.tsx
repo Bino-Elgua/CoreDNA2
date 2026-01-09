@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../../services/supabaseClient';
 import { Tier, TIER_LIMITS, canExtract, canUseWorkflow, hasFeatureAccess } from '../constants/tiers';
 
 export class TierService {
@@ -10,6 +10,12 @@ export class TierService {
     extractionsThisMonth: number;
     canExtract: boolean;
   }> {
+    // Check for dev override in localStorage (for testing)
+    const devTier = localStorage.getItem('devTier') as Tier | null;
+    if (devTier && ['free', 'pro', 'hunter', 'agency'].includes(devTier)) {
+      return { tier: devTier, extractionsThisMonth: 0, canExtract: true };
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

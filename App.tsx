@@ -13,6 +13,7 @@ const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
 const BrandSimulatorPage = React.lazy(() => import('./pages/BrandSimulatorPage'));
 const AgentForgePage = React.lazy(() => import('./pages/AgentForgePage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const AffiliateHubPage = React.lazy(() => import('./pages/AffiliateHubPage'));
 const BattleModePage = React.lazy(() => import('./pages/BattleModePage'));
 const SonicLabPage = React.lazy(() => import('./pages/SonicLabPage'));
 const LiveSessionPage = React.lazy(() => import('./pages/LiveSessionPage'));
@@ -130,11 +131,12 @@ const App: React.FC = () => {
                       <Route path="/agent-forge" element={<AgentForgePage />} />
                       <Route path="/builder" element={<SiteBuilderPage />} />
                       <Route path="/scheduler" element={<SchedulerPage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/battle" element={<BattleModePage />} />
-                      <Route path="/sonic" element={<SonicLabPage />} />
-                      <Route path="/automations" element={<AutomationsPage />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
+                       <Route path="/settings" element={<SettingsPage />} />
+                       <Route path="/affiliate" element={<AffiliateHubPage />} />
+                       <Route path="/battle" element={<BattleModePage />} />
+                       <Route path="/sonic" element={<SonicLabPage />} />
+                       <Route path="/automations" element={<AutomationsPage />} />
+                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </React.Suspense>
                 </Layout>

@@ -29,10 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode }) =
     { path: '/builder', label: 'Site Builder', icon: '🏗️' },
     { path: '/agent-forge', label: 'Agent Forge', icon: '🛠️' },
     { path: '/automations', label: 'Automations', icon: '⚡', tier: 'hunter', tooltip: 'Advanced: View & customize workflows (Hunter+ tiers)' },
-  ];
-
-  const bottomNavItems = [
-    { path: '/settings#affiliate', label: 'Affiliate Hub', icon: '🏢', tier: 'agency', tooltip: 'Agency Tier: Earn 20% recurring commission' },
+    { path: '/affiliate', label: 'Affiliate Hub', icon: '🏢', tier: 'agency', tooltip: 'Agency Tier: Earn 20% recurring commission' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -84,27 +81,6 @@ const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode }) =
                 key={item.path} 
                 to={item.path} 
                 title={isCollapsed ? item.label : ''}
-                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${
-                  isActive(item.path) 
-                  ? 'bg-dna-primary text-white font-bold shadow-lg shadow-dna-primary/20' 
-                  : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'
-                }`}
-              >
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                {!isCollapsed && (
-                  <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>
-                )}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Bottom Navigation */}
-          <nav className="space-y-1 border-t border-gray-100 dark:border-white/10 pt-4">
-            {bottomNavItems.map((item) => (
-              <Link 
-                key={item.path} 
-                to={item.path} 
-                title={isCollapsed ? item.label : item.tooltip || item.label}
                 className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all group ${
                   isActive(item.path) 
                   ? 'bg-dna-primary text-white font-bold shadow-lg shadow-dna-primary/20' 
