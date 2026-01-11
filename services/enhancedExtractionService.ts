@@ -28,6 +28,7 @@ class EnhancedExtractionService {
       const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
       
       console.log('[EnhancedExtraction] Settings:', settings);
+      console.log('[EnhancedExtraction] activeLLM:', settings.activeLLM);
       console.log('[EnhancedExtraction] Available LLM settings:', settings.llms);
       
       // Map Settings provider names to geminiService provider names
@@ -39,17 +40,36 @@ class EnhancedExtractionService {
       // PRIORITY 1: Use explicitly set activeLLM if it has API key
       if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey?.trim()) {
         const mappedProvider = providerMap[settings.activeLLM] || settings.activeLLM;
-        console.log('[EnhancedExtraction] Using configured activeLLM:', settings.activeLLM, '→ mapped to:', mappedProvider);
+        console.log(`[EnhancedExtraction] ✓ Using configured activeLLM: ${settings.activeLLM} → ${mappedProvider}`);
         return mappedProvider;
       }
       
-      // PRIORITY 2: Find first LLM with API key in alphabetical order
+      if (settings.activeLLM) {
+        console.warn(`[EnhancedExtraction] ⚠️ activeLLM set to ${settings.activeLLM} but no API key found. Falling back to first available.`);
+      }
+      
+      // PRIORITY 2: Find first LLM with API key (prefer non-Gemini)
       if (settings.llms && Object.keys(settings.llms).length > 0) {
+        const keys = Object.keys(settings.llms);
+        
+        // First, try non-Gemini providers
+        for (const key of keys) {
+          if (key !== 'google' && key !== 'gemini') {
+            const llmConfig = settings.llms[key] as any;
+            if (llmConfig?.apiKey?.trim()) {
+              const mappedProvider = providerMap[key] || key;
+              console.log(`[EnhancedExtraction] ✓ Using first non-Gemini LLM: ${key} → ${mappedProvider}`);
+              return mappedProvider;
+            }
+          }
+        }
+        
+        // Then try any available provider
         for (const [key, config] of Object.entries(settings.llms)) {
           const llmConfig = config as any;
           if (llmConfig?.apiKey?.trim()) {
             const mappedProvider = providerMap[key] || key;
-            console.log('[EnhancedExtraction] Using first available LLM:', key, '→ mapped to:', mappedProvider);
+            console.log(`[EnhancedExtraction] ✓ Using available LLM: ${key} → ${mappedProvider}`);
             return mappedProvider;
           }
         }

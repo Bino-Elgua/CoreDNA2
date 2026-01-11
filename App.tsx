@@ -76,6 +76,22 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
+      // STEP 0: Auto-clear localStorage if quota exceeded
+      try {
+        localStorage.setItem('_quota_test', 'test');
+        localStorage.removeItem('_quota_test');
+      } catch (e: any) {
+        if (e.name === 'QuotaExceededError') {
+          console.warn('localStorage quota exceeded, clearing old data...');
+          // Keep only settings, clear everything else
+          const settings = localStorage.getItem('core_dna_settings');
+          localStorage.clear();
+          if (settings) {
+            localStorage.setItem('core_dna_settings', settings);
+          }
+        }
+      }
+
       // STEP 1: Migrate legacy API keys on app load (one-time)
       migrateLegacyKeys();
 

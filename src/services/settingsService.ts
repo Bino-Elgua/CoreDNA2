@@ -101,8 +101,25 @@ export function saveSettings(settings: SettingsData): void {
       });
     }
 
-    // Save to localStorage
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    // Try to save to localStorage
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError') {
+        // Quota exceeded: clear old profiles/data, keep only settings
+        console.warn('localStorage quota exceeded, clearing old profiles...');
+        localStorage.removeItem('core_dna_profiles');
+        localStorage.removeItem('leads');
+        localStorage.removeItem('campaigns');
+        localStorage.removeItem('stored_campaigns');
+        
+        // Retry save
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        console.log('✅ Cleared old data and saved settings');
+      } else {
+        throw e;
+      }
+    }
 
     // TODO: Sync to Supabase if user authenticated
     // await supabase.from('user_settings').upsert({ ...settings })
