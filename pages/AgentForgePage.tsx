@@ -172,7 +172,7 @@ const AgentForgePage: React.FC = () => {
   if (!selectedDNA) return <div className="p-10 text-center">Loading Profile...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
           <div>
               <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white">Agent Forge</h1>
@@ -187,7 +187,7 @@ const AgentForgePage: React.FC = () => {
           </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-[800px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* LEFT PANEL: CONFIGURATION */}
           <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
