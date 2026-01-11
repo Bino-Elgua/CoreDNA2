@@ -142,10 +142,8 @@ const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode }) =
              <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-dna-primary/10 rounded-full blur-[120px]" />
           </div>
          
-         <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar p-4 md:p-8">
-           <div className="w-full">
-             {children}
-           </div>
+         <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar p-4 md:p-8 pb-20">
+           {children}
          </div>
        </main>
     </div>
