@@ -187,7 +187,7 @@ const AgentForgePage: React.FC = () => {
           </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
           {/* LEFT PANEL: CONFIGURATION */}
           <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
@@ -297,7 +297,7 @@ const AgentForgePage: React.FC = () => {
           </div>
 
           {/* RIGHT PANEL: WORKSPACE (TABS) */}
-          <div className="lg:col-span-2 flex flex-col h-full">
+          <div className="lg:col-span-3 flex flex-col h-full">
               {/* Tab Nav */}
               <div className="flex gap-4 mb-4 border-b border-gray-200 dark:border-gray-700">
                   {['configure', 'test', 'deploy'].map((tab) => (
