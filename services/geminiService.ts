@@ -568,19 +568,39 @@ const getActiveLLMProvider = () => {
   const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
   
   console.log('[getActiveLLMProvider] Detecting active LLM provider...');
+  console.log('[getActiveLLMProvider] activeLLM setting:', settings.activeLLM);
+  console.log('[getActiveLLMProvider] Available providers:', settings.llms ? Object.keys(settings.llms) : 'none');
   
   // PRIORITY 1: Use explicitly set activeLLM from Settings if it has API key
-  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey) {
+  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey?.trim()) {
     console.log(`[getActiveLLMProvider] ✓ Using configured activeLLM: ${settings.activeLLM}`);
     return settings.activeLLM;
   }
   
-  // PRIORITY 2: Find first LLM with API key in settings.llms
-  if (settings.llms) {
+  if (settings.activeLLM) {
+    console.warn(`[getActiveLLMProvider] ⚠️ activeLLM set to ${settings.activeLLM} but no API key found. Falling back...`);
+  }
+  
+  // PRIORITY 2: Find first LLM with API key - prefer non-Gemini
+  if (settings.llms && Object.keys(settings.llms).length > 0) {
+    const keys = Object.keys(settings.llms);
+    
+    // First try non-Gemini providers
+    for (const key of keys) {
+      if (key !== 'google' && key !== 'gemini') {
+        const llmConfig = settings.llms[key] as any;
+        if (llmConfig?.apiKey?.trim()) {
+          console.log(`[getActiveLLMProvider] ✓ Using first non-Gemini LLM: ${key}`);
+          return key;
+        }
+      }
+    }
+    
+    // Then try any available provider
     for (const [key, config] of Object.entries(settings.llms)) {
       const llmConfig = config as any;
-      if (llmConfig.apiKey && llmConfig.apiKey.trim()) {
-        console.log(`[getActiveLLMProvider] ✓ Using first available LLM: ${key}`);
+      if (llmConfig?.apiKey?.trim()) {
+        console.log(`[getActiveLLMProvider] ✓ Using available LLM: ${key}`);
         return key;
       }
     }
