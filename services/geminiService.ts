@@ -789,56 +789,478 @@ export const generateAssetImage = (prompt: string) => {
   return geminiService.generate(settings.activeImageGen, `Generate image: ${prompt}`).then(url => ({ url }));
 };
 
-export const generateCampaignAssets = (dna: any, goal?: string, channels?: string[], count?: number, tone?: string) => {
+/**
+ * Generate campaign assets using BrandDNA and LLM
+ * Returns Promise<CampaignAsset[]>
+ */
+export const generateCampaignAssets = async (
+  dna: any,
+  goal: string = 'brand awareness',
+  channels: string[] = ['Instagram', 'Email'],
+  count: number = 5,
+  tone?: string
+): Promise<any[]> => {
   const provider = getActiveLLMProvider();
-  const dnaStr = JSON.stringify(dna).substring(0, 300);
-  const prompt = `Generate ${count || 5} campaign assets for brand "${dna.name}" with goal "${goal || 'brand awareness'}". Channels: ${channels?.join(', ') || 'multi-channel'}. Tone: ${tone || 'default'}. Include titles, copy, image prompts. Format as JSON array.`;
-  return geminiService.generate(provider, prompt);
+  
+  const channelsList = channels.join(', ');
+  const toneLine = tone && tone !== 'Brand Default' ? `Tone: ${tone}` : `Tone: Match the brand's "${dna.toneOfVoice?.description || 'professional'}" voice`;
+  
+  const prompt = `You are a marketing expert. Using this BrandDNA profile, generate ${count} campaign assets across these channels: ${channelsList}.
+
+BRAND PROFILE:
+- Name: ${dna.name}
+- Tagline: ${dna.tagline}
+- Description: ${dna.description}
+- Key Messaging: ${dna.keyMessaging?.join('; ') || 'N/A'}
+- Colors: ${dna.colors?.map((c: any) => c.hex).join(', ') || 'N/A'}
+- Visual Style: ${dna.visualStyle?.description || 'Modern'}
+- ${toneLine}
+- Target Audience: ${dna.targetAudience}
+
+CAMPAIGN GOAL: ${goal}
+
+For EACH of the ${count} assets, create a JSON object with:
+- id: unique identifier (e.g., "asset_1")
+- channel: which channel this is for
+- type: "image" | "carousel" | "email" | "blog"
+- title: compelling headline
+- copy: 150-200 character body text optimized for platform
+- cta: call-to-action button text
+- imagePrompt: detailed visual description for image generation (be specific about style, colors, composition)
+
+Return ONLY a valid JSON array of ${count} objects. No markdown, no explanations.`;
+
+  try {
+    console.log(`[generateCampaignAssets] Generating ${count} assets for "${dna.name}" (goal: ${goal})`);
+    console.log(`[generateCampaignAssets] Provider: ${provider}`);
+    
+    const response = await geminiService.generate(provider, prompt);
+    
+    // Parse JSON response
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('No JSON array found in response');
+    }
+    
+    const assets = JSON.parse(jsonMatch[0]);
+    console.log(`[generateCampaignAssets] ✓ Generated ${assets.length} assets`);
+    
+    return Array.isArray(assets) ? assets : [];
+  } catch (e: any) {
+    console.error('[generateCampaignAssets] Error:', e.message);
+    throw e;
+  }
 };
 
-export const runAgentHiveCampaign = (dna: any, goal: string, channel: string, statusCallback?: (msg: string) => void) => {
+/**
+ * Generate a single campaign asset for specific channel (Hive mode)
+ */
+export const runAgentHiveCampaign = async (
+  dna: any,
+  goal: string,
+  channel: string,
+  statusCallback?: (msg: string) => void
+): Promise<any> => {
   const provider = getActiveLLMProvider();
-  if (statusCallback) statusCallback(`Hive agent processing ${channel}...`);
-  const prompt = `Create a single campaign asset for brand "${dna.name}" for ${channel}. Goal: ${goal}. Include title, compelling copy tailored to ${channel}, and a detailed image prompt. Return as JSON object.`;
-  return geminiService.generate(provider, prompt);
+  
+  if (statusCallback) statusCallback(`Initializing Hive Agent for ${channel}...`);
+  
+  const prompt = `You are a social media expert specializing in ${channel} marketing. Using this BrandDNA, create ONE highly optimized campaign asset.
+
+BRAND:
+- Name: ${dna.name}
+- Description: ${dna.description}
+- Key Messages: ${dna.keyMessaging?.join('; ') || 'N/A'}
+- Colors: ${dna.colors?.map((c: any) => c.hex).join(', ') || 'N/A'}
+- Tone: ${dna.toneOfVoice?.description}
+- Target Audience: ${dna.targetAudience}
+
+CHANNEL: ${channel}
+GOAL: ${goal}
+
+Create 1 asset optimized specifically for ${channel}. Include:
+- title: compelling headline
+- copy: platform-optimized body text (Instagram: <150 chars, Email: 200-300 chars, LinkedIn: professional tone)
+- cta: action button text
+- hashtags: relevant hashtags for ${channel}
+- imagePrompt: detailed visual description with specific style, colors from brand palette
+
+Return ONLY valid JSON object (not array). No markdown.`;
+
+  try {
+    if (statusCallback) statusCallback(`Calling ${provider} API...`);
+    console.log(`[runAgentHiveCampaign] Creating asset for ${channel} using ${provider}`);
+    
+    const response = await geminiService.generate(provider, prompt);
+    
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in response');
+    }
+    
+    const asset = JSON.parse(jsonMatch[0]);
+    asset.id = `asset_${Date.now()}`;
+    asset.channel = channel;
+    
+    if (statusCallback) statusCallback(`✓ Asset created for ${channel}`);
+    console.log(`[runAgentHiveCampaign] ✓ Created asset: ${asset.title}`);
+    
+    return asset;
+  } catch (e: any) {
+    console.error(`[runAgentHiveCampaign] Error: ${e.message}`);
+    if (statusCallback) statusCallback(`✗ Failed: ${e.message}`);
+    throw e;
+  }
 };
+
+/**
+ * Create chat session for BrandDNA analysis
+ */
 export const createBrandChat = () => geminiService;
-export const generateAgentSystemPrompt = (config: any) => {
-  const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, `Generate agent prompt`);
+
+/**
+ * Generate system prompt for AI Agent based on brand DNA and role
+ */
+export const generateAgentSystemPrompt = (
+  dna: any,
+  role: string = 'support',
+  guardrails?: any
+): string => {
+  const forbiddenTopics = guardrails?.forbiddenTopics?.join(', ') || 'None specified';
+  const requiredPhrases = guardrails?.requiredPhrases?.join(', ') || 'None required';
+  const strictness = guardrails?.strictness || 'medium';
+
+  const systemPrompt = `You are a brand representative AI agent for "${dna.name}".
+
+BRAND IDENTITY:
+- Tagline: ${dna.tagline}
+- Description: ${dna.description}
+- Mission: ${dna.mission}
+- Key Messaging: ${dna.keyMessaging?.join('; ') || 'N/A'}
+- Target Audience: ${dna.targetAudience}
+- Tone of Voice: ${dna.toneOfVoice?.adjectives?.join(', ')} - ${dna.toneOfVoice?.description}
+- Brand Personality: ${dna.brandPersonality?.join(', ')}
+- Values: ${dna.values?.join(', ')}
+
+ROLE: ${role.toUpperCase()}
+${role === 'support' ? '- Provide helpful, empathetic customer support aligned with brand values' : ''}
+${role === 'sales' ? '- Guide prospects toward purchase using persuasive, benefit-focused messaging' : ''}
+${role === 'content' ? '- Create engaging content ideas that align with brand voice' : ''}
+${role === 'research' ? '- Conduct market research and competitive analysis' : ''}
+
+GUARDRAILS:
+- Strictness Level: ${strictness}
+- Forbidden Topics: ${forbiddenTopics}
+- Required Phrases: ${requiredPhrases}
+- Knowledge Base Limited: ${guardrails?.knowledgeBaseLimit ? 'Yes' : 'No'}
+
+INSTRUCTIONS:
+1. Always respond in character as a "${dna.name}" brand agent
+2. Use the tone and personality defined above
+3. Reference brand values and key messages when relevant
+4. Decline requests that violate the guardrails above
+5. Provide helpful, accurate information within your knowledge domain
+6. End responses with relevant CTAs or next steps`;
+
+  return systemPrompt;
 };
-export const createAgentChat = () => geminiService;
-export const runBattleSimulation = (brand1: any, brand2: any) => {
-  const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, `Battle ${brand1} vs ${brand2}`);
+
+/**
+ * Initialize chat session with system prompt
+ */
+export const createAgentChat = (systemPrompt: string) => {
+  console.log('[createAgentChat] Initializing agent chat session');
+  return {
+    systemPrompt,
+    sendMessage: async (message: string) => {
+      const provider = getActiveLLMProvider();
+      const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
+      return await geminiService.generate(provider, fullPrompt);
+    }
+  };
 };
-export const analyzeUploadedAssets = (assets: any[]) => {
+/**
+ * Run battle simulation between two brands
+ */
+export const runBattleSimulation = async (brand1: any, brand2: any): Promise<any> => {
   const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, `Analyze assets`);
+  
+  const prompt = `You are a brand strategist. Compare these two brands in a competitive analysis.
+
+BRAND 1: ${brand1.name}
+- Description: ${brand1.description}
+- Key Messages: ${brand1.keyMessaging?.join('; ')}
+- Strengths: ${brand1.swot?.strengths?.join('; ')}
+- Target Audience: ${brand1.targetAudience}
+
+BRAND 2: ${brand2.name}
+- Description: ${brand2.description}
+- Key Messages: ${brand2.keyMessaging?.join('; ')}
+- Strengths: ${brand2.swot?.strengths?.join('; ')}
+- Target Audience: ${brand2.targetAudience}
+
+Provide analysis in JSON format with:
+{
+  "winner": "Brand 1 or Brand 2",
+  "winningFactors": ["factor1", "factor2", "factor3"],
+  "losingFactors": ["factor1", "factor2"],
+  "competitiveGap": "percentage",
+  "strategicRecommendations": {
+    "for_brand1": "actionable advice",
+    "for_brand2": "actionable advice"
+  },
+  "marketPosition": "description of relative positioning"
+}
+
+Return ONLY valid JSON.`;
+
+  try {
+    console.log(`[runBattleSimulation] Comparing "${brand1.name}" vs "${brand2.name}"`);
+    const response = await geminiService.generate(provider, prompt);
+    
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    
+    const result = JSON.parse(jsonMatch[0]);
+    console.log(`[runBattleSimulation] ✓ Winner: ${result.winner}`);
+    return result;
+  } catch (e: any) {
+    console.error('[runBattleSimulation] Error:', e.message);
+    throw e;
+  }
 };
-export const optimizeSchedule = (posts: any[]) => {
+
+/**
+ * Analyze uploaded marketing assets
+ */
+export const analyzeUploadedAssets = async (assets: any[]): Promise<any> => {
   const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, `Optimize schedule`);
+  
+  const assetSummary = assets.map((a, i) => `Asset ${i+1}: ${a.name || 'Unnamed'} - ${a.description || 'No description'}`).join('\n');
+  
+  const prompt = `You are a creative director. Analyze these marketing assets and provide feedback.
+
+ASSETS TO REVIEW:
+${assetSummary}
+
+Provide analysis in JSON with:
+{
+  "overallScore": 1-10,
+  "strengths": ["strength1", "strength2"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "brandAlignment": "assessment of brand fit",
+  "recommendations": ["recommendation1", "recommendation2"],
+  "suggestions": "detailed improvement suggestions"
+}
+
+Return ONLY valid JSON.`;
+
+  try {
+    console.log(`[analyzeUploadedAssets] Analyzing ${assets.length} assets`);
+    const response = await geminiService.generate(provider, prompt);
+    
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    
+    const result = JSON.parse(jsonMatch[0]);
+    console.log(`[analyzeUploadedAssets] ✓ Score: ${result.overallScore}/10`);
+    return result;
+  } catch (e: any) {
+    console.error('[analyzeUploadedAssets] Error:', e.message);
+    throw e;
+  }
 };
-export const generateVeoVideo = (prompt: string) => Promise.resolve({ url: 'https://via.placeholder.com/video.mp4' });
+
+/**
+ * Optimize posting schedule for maximum engagement
+ */
+export const optimizeSchedule = async (posts: any[]): Promise<any[]> => {
+  const provider = getActiveLLMProvider();
+  
+  const postSummary = posts.map((p, i) => `Post ${i+1}: "${p.title}" for ${p.channel || 'unknown'}`).join('\n');
+  
+  const prompt = `You are a social media strategist. Optimize this posting schedule for maximum engagement.
+
+POSTS TO SCHEDULE:
+${postSummary}
+
+For each post, determine optimal:
+- Day of week (Monday-Sunday)
+- Time of day (morning/afternoon/evening)
+- Platform-specific timing
+- Spacing between posts
+
+Return JSON array with each post's optimized schedule:
+[
+  {
+    "postId": "id",
+    "title": "post title",
+    "channel": "platform",
+    "recommendedDay": "day",
+    "recommendedTime": "HH:MM",
+    "reasoning": "why this time"
+  }
+]
+
+Return ONLY valid JSON array.`;
+
+  try {
+    console.log(`[optimizeSchedule] Optimizing ${posts.length} posts`);
+    const response = await geminiService.generate(provider, prompt);
+    
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array found');
+    
+    const result = JSON.parse(jsonMatch[0]);
+    console.log(`[optimizeSchedule] ✓ Optimized schedule for ${result.length} posts`);
+    return Array.isArray(result) ? result : [];
+  } catch (e: any) {
+    console.error('[optimizeSchedule] Error:', e.message);
+    return posts; // Return original if optimization fails
+  }
+};
+
+/**
+ * Generate video using Veo or fallback
+ * NOTE: fal.ai video generation requires paid API key and GPU resources
+ * This is a placeholder that returns mock video URL
+ */
+export const generateVeoVideo = async (prompt: string): Promise<{ url: string }> => {
+  try {
+    console.log('[generateVeoVideo] Video generation placeholder for prompt:', prompt.substring(0, 100));
+    
+    // Return mock video URL - real implementation requires:
+    // 1. fal.ai API key (paid service)
+    // 2. Video model access (Wan2.1, LTX-2, etc.)
+    // 3. GPU resources for processing
+    console.log('[generateVeoVideo] Returning placeholder (real video generation requires fal.ai paid API)');
+    return { url: 'https://via.placeholder.com/video.mp4' };
+  } catch (e) {
+    console.warn('[generateVeoVideo] Error:', e);
+    return { url: 'https://via.placeholder.com/video.mp4' };
+  }
+};
+
+/**
+ * Generate trend pulse (trending topics) for brand
+ */
 export const generateTrendPulse = async (dna: any): Promise<any[]> => {
-   const provider = getActiveLLMProvider();
-   const prompt = `Generate 3 trending topics relevant to "${dna.name}" brand in their industry. For each trend, provide JSON with: id (unique), topic (title), summary (2-3 sentences), relevanceScore (1-100), and suggestedAngle (brand reaction). Return as valid JSON array only.`;
-   try {
-     const response = await geminiService.generate(provider, prompt);
-     // Parse JSON response, fallback to empty array if invalid
-     const parsed = JSON.parse(response);
-     return Array.isArray(parsed) ? parsed : [];
-   } catch (e) {
-     console.error('Failed to generate trends:', e);
-     return [];
-   }
+    const provider = getActiveLLMProvider();
+    
+    const prompt = `You are a market trends analyst. Identify 3-5 trending topics relevant to "${dna.name}" (${dna.description}).
+
+Industry: ${dna.targetAudience}
+Key Messages: ${dna.keyMessaging?.join('; ')}
+
+For EACH trend, provide JSON object with:
+- id: unique identifier
+- topic: trend title (2-4 words)
+- summary: 2-3 sentence explanation
+- relevanceScore: 1-100 (how relevant to brand)
+- suggestedAngle: how brand should respond/leverage
+- actionItems: ["action1", "action2"]
+
+Return ONLY valid JSON array. No markdown.`;
+
+    try {
+      console.log(`[generateTrendPulse] Generating trends for "${dna.name}"`);
+      const response = await geminiService.generate(provider, prompt);
+      
+      let jsonStr = response.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+      }
+      
+      const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('No JSON array found');
+      
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log(`[generateTrendPulse] ✓ Generated ${parsed.length} trends`);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e: any) {
+      console.error('[generateTrendPulse] Failed:', e.message);
+      return [];
+    }
 };
-export const refineAssetWithAI = (asset: any, feedback: string) => {
+
+/**
+ * Refine asset based on user feedback
+ */
+export const refineAssetWithAI = async (asset: any, feedback: string): Promise<any> => {
   const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, `Refine asset: ${feedback}`);
+  
+  const prompt = `You are a creative director. Refine this asset based on feedback.
+
+CURRENT ASSET:
+- Title: ${asset.title}
+- Copy: ${asset.copy}
+- Channel: ${asset.channel}
+- Type: ${asset.type}
+
+USER FEEDBACK: ${feedback}
+
+Create refined version with same structure but improved based on feedback. Return JSON:
+{
+  "title": "refined title",
+  "copy": "refined copy",
+  "cta": "refined CTA",
+  "imagePrompt": "updated visual prompt",
+  "changes": "summary of changes made"
+}
+
+Return ONLY valid JSON.`;
+
+  try {
+    console.log(`[refineAssetWithAI] Refining asset with feedback: "${feedback.substring(0, 50)}..."`);
+    const response = await geminiService.generate(provider, prompt);
+    
+    let jsonStr = response.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    
+    const refined = JSON.parse(jsonMatch[0]);
+    console.log('[refineAssetWithAI] ✓ Asset refined');
+    return { ...asset, ...refined };
+  } catch (e: any) {
+    console.error('[refineAssetWithAI] Error:', e.message);
+    throw e;
+  }
 };
-export const universalGenerate = (prompt: string) => {
+
+/**
+ * Universal generate function - sends any prompt to active LLM
+ */
+export const universalGenerate = async (prompt: string): Promise<string> => {
   const provider = getActiveLLMProvider();
-  return geminiService.generate(provider, prompt);
+  console.log(`[universalGenerate] Using provider: ${provider}`);
+  return await geminiService.generate(provider, prompt);
 };

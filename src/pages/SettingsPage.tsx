@@ -2,11 +2,22 @@ import { useState, useEffect } from 'react';
 import { toastService } from '../services/toastService';
 import { supabase } from '../services/supabase';
 import { DPAModal } from '../components/DPAModal';
+import { 
+  getSettings, 
+  saveSettings, 
+  setApiKey, 
+  deleteApiKey,
+  getActiveLLMProvider,
+  setActiveLLMProvider 
+} from '../services/settingsService';
+import { geminiService } from '../services/geminiService';
 
 export function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [activeCategory, setActiveCategory] = useState('llm');
+  const [healthChecking, setHealthChecking] = useState<Record<string, boolean>>({});
+  const [healthStatus, setHealthStatus] = useState<Record<string, boolean>>({});
 
   // COMPLETE 70+ PROVIDER DEFINITIONS
   const providerCategories = {
@@ -105,29 +116,110 @@ export function SettingsPage() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem('apiKeys');
-    if (stored) {
-      try {
-        setApiKeys(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse API keys:', e);
-      }
+    const settings = getSettings();
+    
+    // Flatten llms keys for display
+    const allKeys: Record<string, string> = {};
+    
+    if (settings.llms) {
+      Object.entries(settings.llms).forEach(([provider, config]) => {
+        if (config.apiKey) {
+          allKeys[provider] = config.apiKey;
+        }
+      });
     }
+    
+    if (settings.image) {
+      Object.entries(settings.image).forEach(([provider, config]) => {
+        if (config.apiKey) {
+          allKeys[provider] = config.apiKey;
+        }
+      });
+    }
+    
+    if (settings.voice) {
+      Object.entries(settings.voice).forEach(([provider, config]) => {
+        if (config.apiKey) {
+          allKeys[provider] = config.apiKey;
+        }
+      });
+    }
+    
+    setApiKeys(allKeys);
   }, []);
 
-  const updateApiKey = (provider: string, value: string) => {
-    const updated = { ...apiKeys, [provider]: value };
-    setApiKeys(updated);
-    localStorage.setItem('apiKeys', JSON.stringify(updated));
-    toastService.showToast(`✅ ${provider.toUpperCase()} key saved`, 'success');
+  const updateApiKey = async (provider: string, value: string) => {
+    try {
+      // Determine category based on provider
+      let category: 'llms' | 'image' | 'voice' = 'llms';
+      const imageProviders = ['imagen', 'dalle', 'dalle4', 'stability', 'sdxl', 'fal', 'flux', 'midjourney', 'runware', 'leonardo', 'recraft', 'xai_image', 'titan', 'firefly', 'deepai', 'replicate_img', 'segmind', 'bria', 'prodia', 'ideogram', 'wan', 'hunyuan_img'];
+      const voiceProviders = ['elevenlabs', 'openai_tts', 'playht', 'cartesia', 'deepgram', 'lmnt', 'fish', 'rime', 'neets', 'speechify', 'polly', 'google_tts', 'azure_speech', 'piper', 'murf', 'resemble', 'wellsaid', 'custom_tts'];
+      
+      if (imageProviders.includes(provider)) category = 'image';
+      else if (voiceProviders.includes(provider)) category = 'voice';
+
+      // Save to new nested format
+      setApiKey(provider, value, category);
+
+      const updated = { ...apiKeys, [provider]: value };
+      setApiKeys(updated);
+
+      // Run health check for LLM providers
+      if (category === 'llms') {
+        setHealthChecking(prev => ({ ...prev, [provider]: true }));
+        try {
+          const healthy = await geminiService.healthCheck(provider);
+          setHealthStatus(prev => ({ ...prev, [provider]: healthy }));
+          
+          if (healthy) {
+            toastService.showToast(`✅ ${provider.toUpperCase()} key saved and tested`, 'success');
+            
+            // Auto-select as active provider if first one
+            const currentActive = getActiveLLMProvider();
+            if (!currentActive) {
+              setActiveLLMProvider(provider);
+              toastService.showToast(`🎯 ${provider.toUpperCase()} set as active provider`, 'info');
+            }
+          } else {
+            toastService.showToast(`⚠️ ${provider.toUpperCase()} key saved but health check failed`, 'warning');
+          }
+        } catch (error) {
+          console.error('Health check error:', error);
+          toastService.showToast(`✅ ${provider.toUpperCase()} key saved`, 'success');
+        } finally {
+          setHealthChecking(prev => ({ ...prev, [provider]: false }));
+        }
+      } else {
+        toastService.showToast(`✅ ${provider.toUpperCase()} key saved`, 'success');
+      }
+    } catch (error) {
+      toastService.showToast(`❌ Failed to save ${provider.toUpperCase()} key`, 'error');
+    }
   };
 
-  const deleteApiKey = (provider: string) => {
-    const updated = { ...apiKeys };
-    delete updated[provider];
-    setApiKeys(updated);
-    localStorage.setItem('apiKeys', JSON.stringify(updated));
-    toastService.showToast(`🗑️ ${provider.toUpperCase()} key removed`, 'info');
+  const handleDeleteApiKey = (provider: string) => {
+    try {
+      // Determine category
+      let category: 'llms' | 'image' | 'voice' = 'llms';
+      const imageProviders = ['imagen', 'dalle', 'dalle4', 'stability', 'sdxl', 'fal', 'flux', 'midjourney', 'runware', 'leonardo', 'recraft', 'xai_image', 'titan', 'firefly', 'deepai', 'replicate_img', 'segmind', 'bria', 'prodia', 'ideogram', 'wan', 'hunyuan_img'];
+      const voiceProviders = ['elevenlabs', 'openai_tts', 'playht', 'cartesia', 'deepgram', 'lmnt', 'fish', 'rime', 'neets', 'speechify', 'polly', 'google_tts', 'azure_speech', 'piper', 'murf', 'resemble', 'wellsaid', 'custom_tts'];
+      
+      if (imageProviders.includes(provider)) category = 'image';
+      else if (voiceProviders.includes(provider)) category = 'voice';
+
+      deleteApiKey(provider, category);
+      
+      const updated = { ...apiKeys };
+      delete updated[provider];
+      setApiKeys(updated);
+      
+      // Clear health status for this provider
+      setHealthStatus(prev => ({ ...prev, [provider]: false }));
+      
+      toastService.showToast(`🗑️ ${provider.toUpperCase()} key removed`, 'info');
+    } catch (error) {
+      toastService.showToast(`❌ Failed to remove ${provider.toUpperCase()} key`, 'error');
+    }
   };
 
   const toggleShowKey = (provider: string) => {
@@ -138,7 +230,13 @@ export function SettingsPage() {
   const categoryKeys = Object.keys(providerCategories) as Array<keyof typeof providerCategories>;
 
   const exportKeys = () => {
-    const data = JSON.stringify(apiKeys, null, 2);
+    const settings = getSettings();
+    const exportData = {
+      llms: settings.llms || {},
+      image: settings.image || {},
+      voice: settings.voice || {}
+    };
+    const data = JSON.stringify(exportData, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -155,8 +253,40 @@ export function SettingsPage() {
       reader.onload = (event) => {
         try {
           const imported = JSON.parse(event.target?.result as string);
-          setApiKeys(imported);
-          localStorage.setItem('apiKeys', JSON.stringify(imported));
+          const settings = getSettings();
+          
+          // Merge imported keys
+          if (imported.llms) {
+            settings.llms = { ...settings.llms, ...imported.llms };
+          }
+          if (imported.image) {
+            settings.image = { ...settings.image, ...imported.image };
+          }
+          if (imported.voice) {
+            settings.voice = { ...settings.voice, ...imported.voice };
+          }
+          
+          saveSettings(settings);
+          
+          // Update display
+          const allKeys: Record<string, string> = {};
+          if (settings.llms) {
+            Object.entries(settings.llms).forEach(([provider, config]) => {
+              if (config.apiKey) allKeys[provider] = config.apiKey;
+            });
+          }
+          if (settings.image) {
+            Object.entries(settings.image).forEach(([provider, config]) => {
+              if (config.apiKey) allKeys[provider] = config.apiKey;
+            });
+          }
+          if (settings.voice) {
+            Object.entries(settings.voice).forEach(([provider, config]) => {
+              if (config.apiKey) allKeys[provider] = config.apiKey;
+            });
+          }
+          setApiKeys(allKeys);
+          
           toastService.showToast('✅ API keys imported', 'success');
         } catch (error) {
           toastService.showToast('❌ Invalid backup file', 'error');
@@ -168,8 +298,14 @@ export function SettingsPage() {
 
   const clearAllKeys = () => {
     if (confirm('⚠️ This will delete ALL your API keys. Are you sure?')) {
+      const settings = getSettings();
+      settings.llms = {};
+      settings.image = {};
+      settings.voice = {};
+      settings.activeLLM = undefined;
+      saveSettings(settings);
       setApiKeys({});
-      localStorage.removeItem('apiKeys');
+      setHealthStatus({});
       toastService.showToast('🗑️ All API keys cleared', 'info');
     }
   };
@@ -287,10 +423,21 @@ export function SettingsPage() {
                       </span>
                     )}
                     {hasKey && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
-                        ✓ Configured
-                      </span>
-                    )}
+                       <>
+                         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+                           ✓ Configured
+                         </span>
+                         {healthStatus[provider.id] !== undefined && (
+                           <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                             healthStatus[provider.id]
+                               ? 'bg-emerald-100 text-emerald-700'
+                               : 'bg-red-100 text-red-700'
+                           }`}>
+                             {healthStatus[provider.id] ? '✓ Healthy' : '✗ Failed'}
+                           </span>
+                         )}
+                       </>
+                     )}
                   </div>
                 </div>
 
@@ -333,14 +480,15 @@ export function SettingsPage() {
                   </button>
 
                   {hasKey && (
-                    <button
-                      onClick={() => deleteApiKey(provider.id)}
-                      className="px-3 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 text-sm transition-colors"
-                      title="Remove key"
-                    >
-                      🗑️
-                    </button>
-                  )}
+                     <button
+                       onClick={() => handleDeleteApiKey(provider.id)}
+                       disabled={healthChecking[provider.id]}
+                       className="px-3 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                       title="Remove key"
+                     >
+                       {healthChecking[provider.id] ? '⏳' : '🗑️'}
+                     </button>
+                   )}
                 </div>
               </div>
             );

@@ -97,6 +97,39 @@ const ExtractPage: React.FC = () => {
         }
     };
 
+    const handleRequestLocationPermission = async () => {
+        if (!("geolocation" in navigator)) {
+            alert("❌ Geolocation is not supported by your browser.");
+            return;
+        }
+
+        setLoadingMsg('Requesting location permission...');
+        setLoading(true);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                setLoadingMsg(`✓ Location granted: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                setLoading(false);
+                setTimeout(() => setLoadingMsg(''), 2000);
+            },
+            (error) => {
+                const errorMsg = error.code === 1 
+                    ? "❌ Location access denied. Please enable in browser settings and try again."
+                    : error.code === 2 
+                    ? "❌ Location unavailable. Check your signal."
+                    : error.code === 3 
+                    ? "❌ Location request timed out."
+                    : `❌ ${error.message}`;
+                
+                console.error("[Location] Error:", errorMsg);
+                alert(errorMsg + "\n\nTo enable:\n1. Settings → Privacy → Location\n2. Allow access\n3. Try again");
+                setLoading(false);
+            },
+            { timeout: 10000, enableHighAccuracy: true }
+        );
+    };
+
     const handleFindLeads = async () => {
         if (!niche) {
             alert("Please enter a niche (e.g. 'Gyms', 'Dentists').");
@@ -108,7 +141,7 @@ const ExtractPage: React.FC = () => {
         setLeads([]);
 
         if (!("geolocation" in navigator)) {
-            alert("Geolocation is not supported by your browser.");
+            alert("❌ Geolocation is not supported by your browser.");
             setLoading(false);
             return;
         }
@@ -127,26 +160,37 @@ const ExtractPage: React.FC = () => {
                          results = await n8nService.runLeadGeneration(niche, latitude, longitude);
                      }
                     
+                    // Ensure results is an array
+                    if (!Array.isArray(results)) {
+                        results = [];
+                    }
+                    
                     // Fallback to standard mode if workflow unavailable
                     if (results.length === 0) {
                         setLoadingMsg(`Locking on coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}...`);
                         results = await findLeadsWithMaps(niche, latitude, longitude);
                     }
                     
-                    setLeads(results);
+                    // Final safety check before setting state
+                    setLeads(Array.isArray(results) ? results : []);
                 } catch (e) {
                     console.error("Lead Hunter Error:", e);
-                    alert("Lead generation failed. The agents encountered an error.");
+                    alert("❌ Lead generation failed. Check console for details.");
                 } finally {
                     setLoading(false);
                 }
             },
             (error) => {
-                const errorMsg = error.code === 1 ? "Location access denied. Please enable location permissions." : 
-                                error.code === 2 ? "Location unavailable. Please check your signal." : 
-                                error.code === 3 ? "Location request timed out." : error.message;
-                console.error("Geolocation error:", errorMsg);
-                alert(errorMsg);
+                const errorMsg = error.code === 1 
+                    ? "❌ Location access denied. Please enable in browser settings."
+                    : error.code === 2 
+                    ? "❌ Location unavailable. Check your signal."
+                    : error.code === 3 
+                    ? "❌ Location request timed out."
+                    : `❌ ${error.message}`;
+                
+                console.error("[Lead Hunter] Geolocation error:", errorMsg);
+                alert(errorMsg + "\n\n📍 Tap 'Enable Location' button to grant permission.");
                 setLoading(false);
             },
             { timeout: 10000, enableHighAccuracy: true }
@@ -312,26 +356,35 @@ const ExtractPage: React.FC = () => {
                     >
                         <h2 className="text-3xl font-display font-bold mb-2 text-white">Neural Lead Hunter</h2>
                         <p className="text-gray-400 text-sm mb-8 italic">Extracting real contact intel and social fingerprints from the local grid.</p>
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <input 
-                                value={niche}
-                                onChange={(e) => setNiche(e.target.value)}
-                                placeholder="Niche (e.g. MedSpas, Roofer)"
-                                className="flex-1 p-4 rounded-2xl bg-white/5 border-2 border-white/10 text-white outline-none focus:border-dna-primary font-medium"
-                            />
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <input 
+                                    value={niche}
+                                    onChange={(e) => setNiche(e.target.value)}
+                                    placeholder="Niche (e.g. MedSpas, Roofer)"
+                                    className="flex-1 p-4 rounded-2xl bg-white/5 border-2 border-white/10 text-white outline-none focus:border-dna-primary font-medium"
+                                />
+                                <button 
+                                    onClick={handleFindLeads}
+                                    disabled={loading}
+                                    className="px-10 py-4 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 transition-all shadow-xl"
+                                >
+                                    {loading ? 'Neural Scanning...' : 'Initialize Hunter'}
+                                </button>
+                            </div>
                             <button 
-                                onClick={handleFindLeads}
+                                onClick={handleRequestLocationPermission}
                                 disabled={loading}
-                                className="px-10 py-4 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:opacity-90 disabled:opacity-50 transition-all shadow-xl"
+                                className="px-6 py-3 bg-dna-secondary/20 text-dna-secondary border-2 border-dna-secondary font-bold uppercase tracking-wider rounded-2xl hover:bg-dna-secondary/30 disabled:opacity-50 transition-all text-sm"
                             >
-                                {loading ? 'Neural Scanning...' : 'Initialize Hunter'}
+                                📍 Enable Location Permission
                             </button>
                         </div>
                         {loading && <p className="text-center text-[10px] font-mono text-dna-secondary mt-6 animate-pulse tracking-[0.3em] uppercase">{loadingMsg}</p>}
                     </motion.div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {leads.map((lead) => (
+                        {Array.isArray(leads) && leads.map((lead) => (
                             <div key={lead.id} className="bg-[#0f172a]/80 backdrop-blur-md p-8 rounded-[3rem] border border-white/10 shadow-2xl relative overflow-hidden flex flex-col group transition-all hover:border-dna-primary/30">
                                 {lead.gapAnalysis.socialSilence && <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] uppercase font-black px-6 py-2 rounded-bl-3xl shadow-lg z-10">Social Silence Detected</div>}
                                 

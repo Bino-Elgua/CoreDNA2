@@ -5,6 +5,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { ApiKeyPrompt } from './components/ApiKeyPrompt';
 import Layout from './components/Layout';
 import { SonicOrb } from './components/SonicOrb';
+import { migrateLegacyKeys } from './src/services/settingsService';
 
 // Lazy load pages - importing from root pages/ directory
 const ExtractPage = React.lazy(() => import('./pages/ExtractPage'));
@@ -75,6 +76,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
+      // STEP 1: Migrate legacy API keys on app load (one-time)
+      migrateLegacyKeys();
+
       const settings = localStorage.getItem('core_dna_settings');
       const dismissed = localStorage.getItem('apiPromptDismissed');
 

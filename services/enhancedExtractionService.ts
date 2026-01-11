@@ -27,12 +27,20 @@ class EnhancedExtractionService {
     try {
       const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
       
+      console.log('[EnhancedExtraction] Settings:', settings);
       console.log('[EnhancedExtraction] Available LLM settings:', settings.llms);
+      
+      // Map Settings provider names to geminiService provider names
+      const providerMap: Record<string, string> = {
+        'google': 'gemini',
+        'anthropic': 'claude',
+      };
       
       // PRIORITY 1: Use explicitly set activeLLM if it has API key
       if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey?.trim()) {
-        console.log('[EnhancedExtraction] Using configured activeLLM:', settings.activeLLM);
-        return settings.activeLLM;
+        const mappedProvider = providerMap[settings.activeLLM] || settings.activeLLM;
+        console.log('[EnhancedExtraction] Using configured activeLLM:', settings.activeLLM, '→ mapped to:', mappedProvider);
+        return mappedProvider;
       }
       
       // PRIORITY 2: Find first LLM with API key in alphabetical order
@@ -40,8 +48,9 @@ class EnhancedExtractionService {
         for (const [key, config] of Object.entries(settings.llms)) {
           const llmConfig = config as any;
           if (llmConfig?.apiKey?.trim()) {
-            console.log('[EnhancedExtraction] Using first available LLM:', key);
-            return key;
+            const mappedProvider = providerMap[key] || key;
+            console.log('[EnhancedExtraction] Using first available LLM:', key, '→ mapped to:', mappedProvider);
+            return mappedProvider;
           }
         }
       }

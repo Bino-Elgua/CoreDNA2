@@ -4,27 +4,6 @@ import { tierService } from './tierService';
 import { n8nService } from './n8nService';
 import { geminiService } from './geminiService';
 
-// Import getActiveLLMProvider for provider selection
-const getActiveLLMProvider = () => {
-  const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
-  const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
-
-  // PRIORITY 1: Use explicitly set activeLLM from Settings if it has API key
-  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey) {
-    return settings.activeLLM;
-  }
-
-  // PRIORITY 2: Check BYOK storage for any configured LLM provider
-  const llmProviders = ['gemini', 'openai', 'claude', 'mistral', 'groq', 'deepseek', 'xai', 'qwen', 'cohere', 'together', 'openrouter', 'perplexity'];
-  for (const provider of llmProviders) {
-    if (apiKeys[provider]) {
-      return provider;
-    }
-  }
-
-  throw new Error('No LLM provider configured. Please select an LLM provider in Settings and add its API key.');
-};
-
 interface SonicCommand {
   intent: string;
   context: Record<string, any>;
@@ -114,7 +93,21 @@ Examples:
 "Build me a website" → {"intent": "build_website", "context": {}, "confidence": 0.85}
 `;
 
-      const provider = getActiveLLMProvider();
+      // Get active LLM provider from localStorage
+      const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+      let provider = settings.activeLLM || Object.keys(settings.llms || {})[0];
+      
+      if (!provider) {
+        throw new Error('No LLM provider configured in settings');
+      }
+      
+      // Map Settings provider names to geminiService provider names
+      const providerMap: Record<string, string> = {
+        'google': 'gemini',
+        'anthropic': 'claude',
+      };
+      provider = providerMap[provider] || provider;
+
       const response = await geminiService.generate(provider, prompt, {
         temperature: 0.3,
         maxTokens: 200
@@ -126,7 +119,7 @@ Examples:
 
       return command as SonicCommand;
     } catch (error) {
-      console.error('Intent detection failed:', error);
+      console.error('[SonicCoPilot] Intent detection failed:', error);
       return null;
     }
   }
@@ -215,8 +208,22 @@ Examples:
     try {
       toastService.showToast('🧬 Extracting brand DNA...', 'info');
 
+      // Get active LLM provider
+      const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+      let provider = settings.activeLLM || Object.keys(settings.llms || {})[0];
+      
+      if (!provider) {
+        throw new Error('No LLM provider configured in settings');
+      }
+
+      // Map Settings provider names to geminiService provider names
+      const providerMap: Record<string, string> = {
+        'google': 'gemini',
+        'anthropic': 'claude',
+      };
+      provider = providerMap[provider] || provider;
+
       // Call actual extraction service (integrate with your existing ExtractPage logic)
-      const provider = getActiveLLMProvider();
       const dna = await geminiService.generate(provider, `Extract brand DNA from ${url}`, {
         maxTokens: 2000
       });

@@ -79,16 +79,27 @@ const CampaignsPage: React.FC = () => {
             }
         } else {
             setLoadingMsg('Generating strategy & copy...');
-            const generatedAssets = await generateCampaignAssets(selectedDNA, goal, channels, channels.length * 2, tone === 'Brand Default' ? undefined : tone); 
-            if (Array.isArray(generatedAssets)) {
-                setAssets(generatedAssets);
-                for (const asset of generatedAssets) {
-                    if (asset && asset.imagePrompt) {
-                         await new Promise(r => setTimeout(r, 1000));
-                         const img = await generateAssetImage(asset.imagePrompt, selectedDNA.visualStyle?.description || 'modern style');
-                         setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, imageUrl: img, isGeneratingImage: false } : a));
+            try {
+                const generatedAssets = await generateCampaignAssets(selectedDNA, goal, channels, channels.length * 2, tone === 'Brand Default' ? undefined : tone); 
+                if (Array.isArray(generatedAssets)) {
+                    setAssets(generatedAssets);
+                    for (const asset of generatedAssets) {
+                        if (asset && asset.imagePrompt) {
+                             await new Promise(r => setTimeout(r, 1000));
+                             try {
+                                 const img = await generateAssetImage(asset.imagePrompt, selectedDNA.visualStyle?.description || 'modern style');
+                                 setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, imageUrl: img, isGeneratingImage: false } : a));
+                             } catch (imgErr) {
+                                 console.warn('[CampaignsPage] Image generation failed for asset:', asset.id, imgErr);
+                                 // Continue without image - don't break the flow
+                                 setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, isGeneratingImage: false } : a));
+                             }
+                        }
                     }
                 }
+            } catch (assetErr: any) {
+                console.error('[CampaignsPage] Asset generation error:', assetErr.message);
+                throw assetErr;
             }
         }
     } catch (e) { 

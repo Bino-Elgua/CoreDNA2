@@ -153,15 +153,17 @@ const AgentForgePage: React.FC = () => {
       addLog('system', 'PROCESSING', 'Sending request to LLM...');
 
       try {
-          const result: GenerateContentResponse = await chatSession.sendMessage({ message: userText });
+          // Call the sendMessage method from chat session
+          const responseText = await chatSession.sendMessage(userText);
           const latency = Date.now() - startTime;
-          const responseText = result.text || "..."
           
           setMessages(prev => [...prev, { role: 'model', text: responseText }]);
           addLog('agent', 'OUTPUT', responseText.substring(0, 50) + (responseText.length > 50 ? '...' : ''), `Latency: ${latency}ms | Chars: ${responseText.length}`);
       } catch (e: any) {
-          setMessages(prev => [...prev, { role: 'model', text: "Error generating response." }]);
-          addLog('error', 'GEN_FAIL', e.message || 'Generation Failed');
+          const errorMsg = e.message || 'Generation Failed';
+          console.error('[AgentForgePage] Error:', errorMsg);
+          setMessages(prev => [...prev, { role: 'model', text: `Error: ${errorMsg}` }]);
+          addLog('error', 'GEN_FAIL', errorMsg);
       } finally {
           setIsThinking(false);
       }
@@ -185,7 +187,7 @@ const AgentForgePage: React.FC = () => {
           </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[800px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-[800px]">
           
           {/* LEFT PANEL: CONFIGURATION */}
           <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">

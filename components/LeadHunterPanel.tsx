@@ -126,7 +126,7 @@ Let's lock your slot: https://cal.com/${user?.name?.replace(/\s/g,'').toLowerCas
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {leads.map((lead) => (
+                                {Array.isArray(leads) && leads.map((lead) => (
                                     <React.Fragment key={lead.id}>
                                         <tr className="hover:bg-white/5 transition-colors group">
                                             <td className="p-6">

@@ -144,7 +144,7 @@ const SonicLabPage: React.FC = () => {
                 </div>
 
                 {/* Settings */}
-                <div className="space-y-8">
+                <div className="space-y-8 max-h-[600px] overflow-y-auto">
                     <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-lg">
                         <h3 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                              <span>🎚️</span> Parametric Controls

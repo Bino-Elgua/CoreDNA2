@@ -1,0 +1,21 @@
+{
+  "project_id": "your-project-id",
+  "functions": [
+    {
+      "name": "llm",
+      "verify_jwt": false
+    },
+    {
+      "name": "image",
+      "verify_jwt": false
+    },
+    {
+      "name": "voice",
+      "verify_jwt": false
+    },
+    {
+      "name": "video",
+      "verify_jwt": false
+    }
+  ]
+}
