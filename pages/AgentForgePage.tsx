@@ -319,7 +319,7 @@ const AgentForgePage: React.FC = () => {
                   
                   {/* TAB 1: SYSTEM PROMPT */}
                   {activeTab === 'configure' && (
-                      <motion.div initial={{opacity:0}} animate={{opacity:1}} className="h-full flex flex-col">
+                      <motion.div initial={{opacity:0}} animate={{opacity:1}} className="h-full flex flex-col min-h-[800px]">
                           <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                               <span className="text-xs text-gray-500">Live Generated System Instruction</span>
                               <button onClick={() => navigator.clipboard.writeText(systemPrompt)} className="text-xs text-dna-primary hover:underline">Copy</button>
@@ -327,7 +327,7 @@ const AgentForgePage: React.FC = () => {
                           <textarea 
                             readOnly 
                             value={systemPrompt} 
-                            className="flex-1 w-full p-6 bg-gray-50 dark:bg-gray-900 font-mono text-xs text-gray-600 dark:text-gray-300 resize-none outline-none leading-relaxed"
+                            className="flex-1 w-full p-6 bg-gray-50 dark:bg-gray-900 font-mono text-sm text-gray-600 dark:text-gray-300 resize-none outline-none leading-relaxed overflow-y-auto"
                           />
                       </motion.div>
                   )}
