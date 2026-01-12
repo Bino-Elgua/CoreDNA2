@@ -178,17 +178,14 @@ export async function generateImage(
         break;
       
       default:
-        console.warn(`[generateImage] Provider ${provider} not yet implemented, trying Stability AI fallback`);
-        try {
-          result = await generateStabilityAI(apiKey, fullPrompt, options);
-        } catch (fallbackError) {
-          console.warn('[generateImage] Fallback also failed, using placeholder');
-          result = {
-            url: generatePlaceholder(prompt),
-            provider: 'placeholder',
-            generatedAt: Date.now()
-          };
-        }
+        console.error(`[generateImage] Provider "${provider}" is not implemented`);
+        console.error('[generateImage] Supported providers: dalle, stability, sd3, fal_flux, black_forest_labs, ideogram, google, imagen, replicate, runware, leonardo');
+        result = {
+          url: generatePlaceholder(prompt),
+          provider: 'placeholder',
+          generatedAt: Date.now(),
+          metadata: { reason: `Provider "${provider}" not implemented` }
+        };
     }
     
     console.log(`[generateImage] ✓ Success with ${result.provider}: ${result.url.substring(0, 80)}`);

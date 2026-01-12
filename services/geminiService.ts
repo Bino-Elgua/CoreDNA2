@@ -24,6 +24,11 @@ export class GeminiService {
       defaultModel: 'gemini-2.0-flash',
       endpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
     },
+    google: {
+      type: 'llm',
+      defaultModel: 'gemini-2.0-flash',
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
+    },
     openai: {
       type: 'llm',
       defaultModel: 'gpt-4o',
@@ -283,6 +288,7 @@ export class GeminiService {
   ): Promise<string> {
     switch (provider) {
       case 'gemini':
+      case 'google':
         return await this.callGemini(apiKey, model, prompt, options);
       case 'claude':
         return await this.callClaude(apiKey, model, prompt, options);
@@ -581,22 +587,8 @@ const getActiveLLMProvider = () => {
     console.warn(`[getActiveLLMProvider] ⚠️ activeLLM set to ${settings.activeLLM} but no API key found. Falling back...`);
   }
   
-  // PRIORITY 2: Find first LLM with API key - prefer non-Gemini
+  // PRIORITY 2: Find first LLM with API key
   if (settings.llms && Object.keys(settings.llms).length > 0) {
-    const keys = Object.keys(settings.llms);
-    
-    // First try non-Gemini providers
-    for (const key of keys) {
-      if (key !== 'google' && key !== 'gemini') {
-        const llmConfig = settings.llms[key] as any;
-        if (llmConfig?.apiKey?.trim()) {
-          console.log(`[getActiveLLMProvider] ✓ Using first non-Gemini LLM: ${key}`);
-          return key;
-        }
-      }
-    }
-    
-    // Then try any available provider
     for (const [key, config] of Object.entries(settings.llms)) {
       const llmConfig = config as any;
       if (llmConfig?.apiKey?.trim()) {
