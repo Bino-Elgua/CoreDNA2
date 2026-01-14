@@ -893,16 +893,23 @@ Return ONLY a valid JSON array of ${count} objects. No markdown, no explanations
     // ENSURE each asset has imagePrompt - critical for image generation
     assets = assets.map((asset: any, idx: number) => {
       // Normalize field names (handle variations from different LLMs)
-      const imagePrompt = asset.imagePrompt || asset.image_prompt || asset.imgPrompt || asset.image || '';
+      let imagePrompt = asset.imagePrompt || asset.image_prompt || asset.imgPrompt || asset.image || '';
+      
+      // Ensure it's a string
+      if (typeof imagePrompt !== 'string') {
+        imagePrompt = JSON.stringify(imagePrompt);
+      }
       
       // If no imagePrompt, generate one from the asset content
-      let finalImagePrompt = imagePrompt;
-      if (!finalImagePrompt || finalImagePrompt.trim().length < 5) {
+      let finalImagePrompt = (imagePrompt || '').trim();
+      if (!finalImagePrompt || finalImagePrompt.length < 5) {
         const copy = asset.copy || asset.content || asset.body || asset.text || '';
         const title = asset.title || asset.headline || '';
         const visualStyle = dna.visualStyle?.description || 'modern professional';
         const colors = dna.colors?.slice(0, 3).map((c: any) => c.name).join(', ') || 'brand colors';
-        finalImagePrompt = `${title}. Visual style: ${visualStyle}. Colors: ${colors}. Content: ${copy.substring(0, 100)}`;
+        const copyText = typeof copy === 'string' ? copy : JSON.stringify(copy);
+        const titleText = typeof title === 'string' ? title : JSON.stringify(title);
+        finalImagePrompt = `${titleText}. Visual style: ${visualStyle}. Colors: ${colors}. Content: ${copyText.substring(0, 100)}`;
       }
       
       return {
