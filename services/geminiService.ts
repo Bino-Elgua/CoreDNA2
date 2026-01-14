@@ -887,8 +887,39 @@ Return ONLY a valid JSON array of ${count} objects. No markdown, no explanations
       throw new Error('No JSON array found in response');
     }
     
-    const assets = JSON.parse(jsonMatch[0]);
+    let assets = JSON.parse(jsonMatch[0]);
     console.log(`[generateCampaignAssets] ✓ Generated ${assets.length} assets`);
+    
+    // ENSURE each asset has imagePrompt - critical for image generation
+    assets = assets.map((asset: any, idx: number) => {
+      // Normalize field names (handle variations from different LLMs)
+      const imagePrompt = asset.imagePrompt || asset.image_prompt || asset.imgPrompt || asset.image || '';
+      
+      // If no imagePrompt, generate one from the asset content
+      let finalImagePrompt = imagePrompt;
+      if (!finalImagePrompt || finalImagePrompt.trim().length < 5) {
+        const copy = asset.copy || asset.content || asset.body || asset.text || '';
+        const title = asset.title || asset.headline || '';
+        const visualStyle = dna.visualStyle?.description || 'modern professional';
+        const colors = dna.colors?.slice(0, 3).map((c: any) => c.name).join(', ') || 'brand colors';
+        finalImagePrompt = `${title}. Visual style: ${visualStyle}. Colors: ${colors}. Content: ${copy.substring(0, 100)}`;
+      }
+      
+      return {
+        ...asset,
+        id: asset.id || `asset_${idx + 1}`,
+        imagePrompt: finalImagePrompt,
+        content: asset.copy || asset.content || asset.body || asset.text || '',
+        title: asset.title || asset.headline || '',
+        channel: asset.channel || 'Instagram',
+        type: asset.type || 'image',
+        cta: asset.cta || 'Learn More',
+        imageUrl: undefined, // Will be populated during generation
+        isGeneratingImage: true
+      };
+    });
+    
+    console.log(`[generateCampaignAssets] ✓ Normalized ${assets.length} assets with imagePrompts`);
     
     return Array.isArray(assets) ? assets : [];
   } catch (e: any) {

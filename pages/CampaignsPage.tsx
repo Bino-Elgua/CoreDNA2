@@ -161,19 +161,29 @@ const CampaignsPage: React.FC = () => {
                 const generatedAssets = await generateCampaignAssets(selectedDNA, goal, channels, channels.length * 2, tone === 'Brand Default' ? undefined : tone); 
                 if (Array.isArray(generatedAssets)) {
                     setAssets(generatedAssets);
-                    for (const asset of generatedAssets) {
-                        if (asset && asset.imagePrompt) {
-                             await new Promise(r => setTimeout(r, 1000));
-                             try {
-                                 const img = await generateAssetImage(asset.imagePrompt, selectedDNA.visualStyle?.description || 'modern style');
-                                 setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, imageUrl: img, isGeneratingImage: false } : a));
-                             } catch (imgErr) {
-                                 console.warn('[CampaignsPage] Image generation failed for asset:', asset.id, imgErr);
-                                 // Continue without image - don't break the flow
-                                 setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, isGeneratingImage: false } : a));
-                             }
+                    
+                    // Generate images for ALL assets in parallel (faster)
+                    setLoadingMsg('Generating visual assets...');
+                    const imagePromises = generatedAssets.map(async (asset) => {
+                        if (!asset || !asset.imagePrompt) {
+                            console.warn('[CampaignsPage] Asset missing imagePrompt:', asset?.id);
+                            return asset; // Return as-is if no prompt
                         }
+                        
+                        try {
+                            console.log(`[CampaignsPage] Generating image for ${asset.id}:`, asset.imagePrompt.substring(0, 50));
+                            const img = await generateAssetImage(asset.imagePrompt, selectedDNA.visualStyle?.description || 'modern style');
+                            console.log(`[CampaignsPage] ✓ Image generated for ${asset.id}: ${img.substring(0, 80)}`);
+                            return { ...asset, imageUrl: img, isGeneratingImage: false };
+                        } catch (imgErr) {
+                            console.error('[CampaignsPage] Image generation failed for asset:', asset.id, imgErr);
+                            // Return asset without image - don't break the flow
+                            return { ...asset, isGeneratingImage: false };
                         }
+                    });
+                    
+                    const assetsWithImages = await Promise.all(imagePromises);
+                    setAssets(assetsWithImages);
                         }
                         } catch (assetErr: any) {
                         console.error('[CampaignsPage] Asset generation error:', assetErr.message);
