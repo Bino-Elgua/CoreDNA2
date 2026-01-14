@@ -23,6 +23,7 @@ const SharedProfilePage = React.lazy(() => import('./pages/SharedProfilePage'));
 const SiteBuilderPage = React.lazy(() => import('./pages/SiteBuilderPage'));
 const SchedulerPage = React.lazy(() => import('./pages/SchedulerPage'));
 const AutomationsPage = React.lazy(() => import('./pages/AutomationsPage'));
+const ImageDebugPage = React.lazy(() => import('./pages/ImageDebugPage'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -171,9 +172,10 @@ const App: React.FC = () => {
                        <Route path="/settings" element={<SettingsPage />} />
                        <Route path="/affiliate" element={<AffiliateHubPage />} />
                        <Route path="/battle" element={<BattleModePage />} />
-                       <Route path="/sonic" element={<SonicLabPage />} />
-                       <Route path="/automations" element={<AutomationsPage />} />
-                       <Route path="*" element={<Navigate to="/" replace />} />
+                        <Route path="/sonic" element={<SonicLabPage />} />
+                        <Route path="/automations" element={<AutomationsPage />} />
+                        <Route path="/debug-image" element={<ImageDebugPage />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </React.Suspense>
                 </Layout>
