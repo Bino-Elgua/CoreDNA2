@@ -1,163 +1,304 @@
-<div align="center">
+# CoreDNA2 - Brand AI Marketing Platform
 
-# 🧬 CoreDNA
-
-## Enterprise AI Brand Intelligence Platform
-
-**Extract your brand's essence. Generate unlimited assets.**
-
-**AI-powered brand analysis, campaign generation, and marketing automation.**
-
-> ⚠️ **PRIVATE REPOSITORY**  
-> This repository is confidential and restricted to authorized CoreDNA team members only.
-
-</div>
-
----
-
-## 🔒 Access Policy
-
-**Authorized Personnel Only:**
-
-- CoreDNA engineering team
-- Approved contractors (under NDA)
-- Executive stakeholders
-
-**Unauthorized access is prohibited.**
-
-If you need access: Contact engineering@coredna.ai
-
----
-
-## 🚀 Platform Overview
-
-CoreDNA is an enterprise SaaS platform for brand intelligence and sales automation.
-
-**Live Platform:** https://app.coredna.ai  
-**Documentation:** https://docs.coredna.ai  
-**Status:** https://status.coredna.ai
-
-### Core Features
-
-- **Brand Extraction** — AI-powered brand DNA analysis from any website
-- **Campaign Generation** — Automated marketing asset creation
-- **Website Builder** — Instant site generation and deployment
-- **Sonic Co-Pilot** — Voice-activated AI assistant (Hunter+ tier)
-- **Workflow Automation** — n8n-powered automation engine
-- **Team Collaboration** — Multi-user workspace management
-
-### Technology Stack
-
-- React 19 + TypeScript + Vite
-- Supabase (PostgreSQL)
-- n8n automation engine
-- Web Speech API (voice recognition)
-- 70+ AI provider integrations
-
-### Subscription Tiers
-
-- **Free** — $0 (3 extractions/month)
-- **Pro** — $49/mo (Unlimited, all providers)
-- **Hunter** — $149/mo (Pro + automation + Sonic Co-Pilot voice)
-- **Agency** — Custom (White-label, unlimited team, advanced features)
-
----
-
-## 🛠️ Development Setup
-
-**For authorized team members only.**
-
-### Prerequisites
-
-- Node.js 18+
-- Supabase CLI
-- Valid `.env.local` (get from team lead)
-
-### Quick Start
+## Quick Start
 
 ```bash
-# 1. Clone repository
-git clone git@github.com:yourusername/CoreDNA.git
-
-# 2. Install dependencies
 npm install
-
-# 3. Set up environment
-cp .env.example .env.local
-
-# 4. Start development server
 npm run dev
 ```
 
-**Development:** http://localhost:5173
+Server runs on **http://localhost:3000**
+
+---
+
+## Features
+
+- **Brand DNA Extraction** - Analyze any website, extract brand identity (colors, fonts, tone, messaging)
+- **Campaign Generation** - Create multi-channel marketing assets (social, email, ads, videos)
+- **Lead Hunter** - Find local businesses + auto-generate sales copy
+- **Site Builder** - Generate full websites from brand DNA
+- **Advanced Inference** - Speculative decoding, self-consistency, skeleton of thought
+- **RLM** - Recursive language model for deep analysis
+- **70+ AI Providers** - BYOK (Bring Your Own Keys) model for LLM, image, video, voice
+
+---
+
+## Architecture
+
+```
+App.tsx (Error Boundary + Auth)
+  ├─ Pages (14 main pages: Dashboard, Extract, Campaigns, etc.)
+  ├─ Services (40+ AI services: LLM routing, image gen, scraping, etc.)
+  ├─ Components (Reusable UI components)
+  └─ Types (TypeScript interfaces)
+```
+
+**Data Flow**:
+```
+User Input → Service Layer → Provider APIs → Results → localStorage
+```
+
+---
+
+## Configuration
+
+### API Keys (Required)
+
+Go to **Settings** page to add API keys:
+- **LLM** (50+): OpenAI, Claude, Gemini, Mistral, Groq, DeepSeek, etc.
+- **Image** (20+): DALL-E, Stability, Flux, Midjourney, Leonardo, etc.
+- **Video** (20+): Sora, Runway, Kling, Luma, HeyGen, etc.
+- **Voice** (15+): ElevenLabs, PlayHT, OpenAI TTS, etc.
+- **Workflows** (10+): N8N, Zapier, Make, LangChain, etc.
+
+Keys stored **locally only** (never sent to CoreDNA servers).
 
 ### Environment Variables
 
-Required in `.env.local`:
-
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase public key
-- `VITE_GEMINI_API_KEY` — Google Gemini API key (optional for dev)
-- `VITE_OPENAI_API_KEY` — OpenAI API key (optional for dev)
-
-Get production keys from 1Password vault: "CoreDNA Production Keys"
-
----
-
-## 📚 Documentation
-
-**Internal (Team Only):**
-
-- [Development Guide](./docs/internal/DEVELOPMENT.md)
-- [Architecture Overview](./docs/internal/ARCHITECTURE.md)
-- [Security Protocols](./docs/internal/SECURITY.md)
-- [Sonic Co-Pilot Setup](./README_SONIC.md) — Voice agent implementation guide
-
-**External (Public):**
-
-- User Documentation: https://docs.coredna.ai
-- API Reference: https://api.coredna.ai/docs
-- Status Page: https://status.coredna.ai
-
----
-
-## 👥 Team Contacts
-
-**Engineering:**
-- Lead: engineering@coredna.ai
-- DevOps: devops@coredna.ai
-
-**Product & Support:**
-- Product: product@coredna.ai
-- Support: support@coredna.ai
-
-**Slack:** `#engineering` (internal team)
-
-**Security Issue?** Contact security@coredna.ai immediately.
-
----
-
-## 📜 Legal Notice
-
+Optional (in `.env.local`):
 ```
-Unauthorized access, use, or distribution is prohibited.
-
-This software is proprietary and confidential.
-
-Copyright © 2026 CoreDNA, Inc. All Rights Reserved.
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_key
+VITE_OLLAMA_ENDPOINT=http://localhost:11434
 ```
 
 ---
 
-## 📋 Quick Commands
+## Key Files
 
+### Pages
+- **ExtractPage** - Brand DNA extraction + lead hunting
+- **CampaignsPage** - Campaign asset generation
+- **DashboardPage** - Overview + analytics
+- **SettingsPage** - API key configuration
+- **SiteBuilderPage** - Website generation
+- **BattleModePage** - A/B testing brands
+- **AgentForgePage** - Custom AI agents
+- **SonicLabPage** - Audio branding
+- **SchedulerPage** - Campaign scheduling
+
+### Core Services
+- **geminiService.ts** - LLM provider routing
+- **enhancedExtractionService.ts** - Brand DNA extraction
+- **mediaGenerationService.ts** - Image/video generation
+- **rlmService.ts** - Recursive language model
+- **settingsService.ts** - Configuration management
+- **workflowService.ts** - N8N/Zapier integration
+
+### Infrastructure
+- **contexts/AuthContext.tsx** - User authentication
+- **services/ai/router.ts** - AI provider routing
+- **services/supabaseClient.ts** - Supabase integration
+
+---
+
+## Deployment
+
+### Build
 ```bash
-npm run dev          # Run dev server
-npm run build        # Production build
-npm run preview      # Preview built version
-npm test             # Run tests (when added)
+npm run build
+```
+
+Outputs to `dist/` directory.
+
+### Preview
+```bash
+npm run preview
+```
+
+### Deploy Options
+- **Vercel**: Push to GitHub, auto-deploy
+- **Firebase**: `firebase deploy`
+- **Netlify**: Connect GitHub, auto-deploy
+
+---
+
+## Development
+
+### Add New Provider
+
+1. Add to `types.ts` (LLMProviderId, ImageProviderId, etc.)
+2. Add endpoint config in service (geminiService.ts, etc.)
+3. Implement adapter in `services/ai/adapters/`
+4. Update provider list in SettingsPage
+
+### Add New Page
+
+1. Create `pages/MyPage.tsx`
+2. Import in `App.tsx` with React.lazy()
+3. Add route in Router
+4. Add to navigation menu
+
+### Modify Brand DNA
+
+Edit `types.ts` BrandDNA interface, then update:
+- `services/geminiService.ts` (LLM prompt)
+- `pages/ExtractPage.tsx` (display)
+- `pages/CampaignsPage.tsx` (usage)
+
+---
+
+## Data Storage
+
+### localStorage Keys
+- `core_dna_user` - User profile
+- `core_dna_settings` - API keys + config
+- `core_dna_profiles` - Extracted brand profiles
+- `SavedCampaigns` - Generated campaigns
+
+### Supabase (Optional)
+- `user_settings` table - Sync across devices
+
+### Auto-Cleanup
+- If quota exceeded, auto-clears old profiles
+- Preserves settings and recent data
+
+---
+
+## Tier System
+
+| Tier | Features |
+|------|----------|
+| Free | 1 extraction/month, basic generation |
+| Pro | 10 extractions/month, image gen |
+| Hunter | Unlimited, RLM, advanced inference, lead hunter |
+| Agency | Everything + white-label + team mgmt |
+
+**Demo user**: Agency tier (full access for testing)
+
+---
+
+## Troubleshooting
+
+### "No API key configured"
+→ Go to Settings, add LLM + image provider keys
+
+### "Website scraping failed"
+→ App falls back to LLM-only analysis (no scraping needed)
+
+### "Video generation timeout"
+→ Normal for slow providers (Sora, Runway)
+→ Asset marked "pending", check later
+
+### "Settings not saving"
+→ Check browser localStorage quota
+→ Check browser console for errors
+
+---
+
+## Performance Notes
+
+- **DNA Extraction**: 5-30s (depends on website size + LLM)
+- **Campaign Generation**: 10-60s (depends on asset count + providers)
+- **Image Generation**: 10-60s per image (depends on provider)
+- **Video Generation**: 30s-5min per video (depends on provider)
+
+**Optimization Tips**:
+- Use Speculative Decoding (2-3x faster LLM)
+- Use Hive Mode for parallel asset generation
+- Use local LLM (Ollama) for fast iterations
+- Configure faster providers (Groq, DeepSeek)
+
+---
+
+## Files Structure
+
+```
+CoreDNA2-work/
+├─ src/                      # Aliases: $lib/ = src/lib/
+│  ├─ components/            # Reusable UI components
+│  ├─ hooks/                 # Custom React hooks
+│  ├─ lib/                   # Utilities, helpers
+│  ├─ pages/                 # Page components
+│  ├─ services/              # Business logic
+│  └─ types/                 # TypeScript types
+├─ pages/                    # Root level pages (Vite)
+├─ services/                 # Root level services
+├─ components/               # Root level components
+├─ contexts/                 # Context providers
+├─ hooks/                    # Root level hooks
+├─ docs/                     # Documentation
+│  ├─ archived/              # Old implementation docs
+│  ├─ internal/              # Internal docs
+│  └─ legal/                 # Legal/privacy docs
+├─ App.tsx                   # Root component
+├─ index.tsx                 # Entry point
+├─ types.ts                  # Global types
+├─ constants.ts              # Global constants
+├─ package.json              # Dependencies
+├─ vite.config.ts            # Vite config
+├─ tsconfig.json             # TypeScript config
+├─ tailwind.config.js        # Tailwind CSS config
+├─ postcss.config.js         # PostCSS config
+├─ svelte.config.js          # Vite plugin config
+└─ .gitignore                # Git ignore rules
 ```
 
 ---
 
-**For licensing inquiries:** legal@coredna.ai
+## Tech Stack
+
+- **Frontend**: React 19 + Vite
+- **Styling**: Tailwind CSS + CSS Variables
+- **State**: React Context + localStorage
+- **Database**: Supabase (optional)
+- **AI**: 70+ providers (BYOK)
+- **Build**: Vite
+- **Language**: TypeScript (strict mode)
+
+---
+
+## Browser Support
+
+- Chrome/Edge: Latest
+- Firefox: Latest
+- Safari: Latest
+- Mobile: Full support (responsive)
+
+---
+
+## Security
+
+- ✅ API keys stored locally only (never sent to CoreDNA backend)
+- ✅ Requests go directly to provider APIs
+- ✅ No tracking or analytics
+- ✅ User data stays on device
+
+---
+
+## Contributing
+
+See `docs/DEVELOPMENT.md` for contribution guidelines.
+
+---
+
+## License
+
+Proprietary - See `docs/legal/` for details.
+
+---
+
+## Support
+
+- **Documentation**: See `docs/` folder
+- **Issues**: GitHub Issues
+- **Email**: support@coredna.ai
+
+---
+
+## Roadmap
+
+- [ ] Add test suite
+- [ ] Improve CORS handling
+- [ ] Add backend API
+- [ ] Expand accessibility
+- [ ] Team collaboration features
+- [ ] Advanced analytics
+- [ ] Custom integrations
+- [ ] Mobile app
+
+---
+
+**Last Updated**: January 14, 2025
+**Version**: 1.0.0
+**Status**: Production Ready ✅
