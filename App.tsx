@@ -6,11 +6,12 @@ import { ApiKeyPrompt } from './components/ApiKeyPrompt';
 import Layout from './components/Layout';
 import { SonicOrb } from './components/SonicOrb';
 import HealthCheckDisplay from './components/HealthCheckDisplay';
-import { migrateLegacyKeys } from './src/services/settingsService';
+// import { migrateLegacyKeys } from './services/settingsService'; // Function doesn't exist
 
 // Lazy load pages - importing from root pages/ directory
 const ExtractPage = React.lazy(() => import('./pages/ExtractPage'));
-const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const DashboardPageV2 = React.lazy(() => import('./pages/DashboardPageV2'));
+const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage'));
 const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
 const BrandSimulatorPage = React.lazy(() => import('./pages/BrandSimulatorPage'));
 const AgentForgePage = React.lazy(() => import('./pages/AgentForgePage'));
@@ -31,23 +32,38 @@ const LoadingFallback = () => (
     <div className="text-center">
       <div className="text-5xl mb-4 animate-bounce">🧬</div>
       <p className="text-white text-lg">Loading...</p>
+      <p className="text-white text-xs mt-4 opacity-75">This may take a moment</p>
     </div>
   </div>
 );
 
 // Error boundary
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string; errorStack?: string }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: '' };
+    this.state = { hasError: false, error: '', errorStack: undefined };
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message };
+    return { hasError: true, error: error.message, errorStack: error.stack };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught:', error, errorInfo);
+    console.error('Error caught:', error);
+    console.error('Error Info:', errorInfo);
+    // Log to localStorage for debugging
+    try {
+      const errors = JSON.parse(localStorage.getItem('_app_errors') || '[]');
+      errors.push({
+        timestamp: new Date().toISOString(),
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack
+      });
+      localStorage.setItem('_app_errors', JSON.stringify(errors.slice(-10)));
+    } catch (e) {
+      console.error('Failed to log error:', e);
+    }
   }
 
   render() {
@@ -57,12 +73,26 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
           <div className="text-center max-w-md">
             <h1 className="text-3xl font-bold text-red-600 dark:text-red-400 mb-4">Error</h1>
             <p className="text-red-700 dark:text-red-300 mb-4">{this.state.error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            >
-              Reload Page
-            </button>
+            {this.state.errorStack && (
+              <details className="text-xs text-red-600 dark:text-red-400 text-left mb-4 max-h-48 overflow-auto">
+                <summary>Stack trace</summary>
+                <pre className="whitespace-pre-wrap break-words">{this.state.errorStack}</pre>
+              </details>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              >
+                Reload Page
+              </button>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="flex-1 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              >
+                Go Home
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -73,29 +103,30 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 }
 
 const App: React.FC = () => {
+  console.log('[App] Rendering...');
   const [darkMode, setDarkMode] = useState(true);
   const [showApiPrompt, setShowApiPrompt] = useState(false);
+  const [showQuotaWarning, setShowQuotaWarning] = useState(false);
 
   useEffect(() => {
     try {
-      // STEP 0: Auto-clear localStorage if quota exceeded
+      // STEP 0: Check storage quota WITHOUT clearing data
       try {
         localStorage.setItem('_quota_test', 'test');
         localStorage.removeItem('_quota_test');
       } catch (e: any) {
         if (e.name === 'QuotaExceededError') {
-          console.warn('localStorage quota exceeded, clearing old data...');
-          // Keep only settings, clear everything else
-          const settings = localStorage.getItem('core_dna_settings');
-          localStorage.clear();
-          if (settings) {
-            localStorage.setItem('core_dna_settings', settings);
+          console.warn('[App] ⚠️ localStorage quota exceeded');
+          const dismissed = localStorage.getItem('_quotaWarningDismissed');
+          if (!dismissed) {
+            setShowQuotaWarning(true);
           }
+          return; // Stop initialization
         }
       }
 
       // STEP 1: Migrate legacy API keys on app load (one-time)
-      migrateLegacyKeys();
+      // migrateLegacyKeys(); // Function doesn't exist
 
       const settings = localStorage.getItem('core_dna_settings');
       const dismissed = localStorage.getItem('apiPromptDismissed');
@@ -141,6 +172,39 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <>
+        {/* Quota Warning Modal */}
+        {showQuotaWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-lg max-w-md shadow-xl border-l-4 border-red-500">
+              <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Storage Full</h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Your browser storage is nearly full ({Math.round((localStorage.length / 5242880) * 100)}%). 
+                Archive or delete old portfolios to continue saving new data.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowQuotaWarning(false);
+                    localStorage.setItem('_quotaWarningDismissed', 'true');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={() => {
+                    setShowQuotaWarning(false);
+                    window.location.href = '/#/dashboard';
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showApiPrompt && <ApiKeyPrompt onComplete={handleApiPromptComplete} />}
         <AuthProvider>
           <Router>
@@ -160,8 +224,9 @@ const App: React.FC = () => {
                 <Layout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
                   <React.Suspense fallback={<LoadingFallback />}>
                     <Routes>
-                      <Route path="/" element={<DashboardPage />} />
-                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/" element={<DashboardPageV2 />} />
+                      <Route path="/dashboard" element={<DashboardPageV2 />} />
+                      <Route path="/portfolio/:portfolioId" element={<PortfolioPage />} />
                       <Route path="/extract" element={<ExtractPage />} />
                       <Route path="/campaigns" element={<CampaignsPage />} />
                       <Route path="/simulate" element={<BrandSimulatorPage />} />
@@ -169,13 +234,13 @@ const App: React.FC = () => {
                       <Route path="/agent-forge" element={<AgentForgePage />} />
                       <Route path="/builder" element={<SiteBuilderPage />} />
                       <Route path="/scheduler" element={<SchedulerPage />} />
-                       <Route path="/settings" element={<SettingsPage />} />
-                       <Route path="/affiliate" element={<AffiliateHubPage />} />
-                       <Route path="/battle" element={<BattleModePage />} />
-                        <Route path="/sonic" element={<SonicLabPage />} />
-                        <Route path="/automations" element={<AutomationsPage />} />
-                        <Route path="/debug-image" element={<ImageDebugPage />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/affiliate" element={<AffiliateHubPage />} />
+                      <Route path="/battle" element={<BattleModePage />} />
+                      <Route path="/sonic" element={<SonicLabPage />} />
+                      <Route path="/automations" element={<AutomationsPage />} />
+                      <Route path="/debug-image" element={<ImageDebugPage />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </React.Suspense>
                 </Layout>

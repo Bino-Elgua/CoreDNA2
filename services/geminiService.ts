@@ -314,6 +314,21 @@ export class GeminiService {
   }
 
   /**
+   * Helper: Wrap promises with timeout
+   */
+  private withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number = 30000
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
+      )
+    ]);
+  }
+
+  /**
    * Gemini API Implementation
    */
   private async callGemini(
@@ -325,19 +340,22 @@ export class GeminiService {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: options.temperature || 0.7,
-            maxOutputTokens: options.maxTokens || 2048
-          }
-        })
-      });
+      const response = await this.withTimeout(
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+              temperature: options.temperature || 0.7,
+              maxOutputTokens: options.maxTokens || 2048
+            }
+          })
+        }),
+        30000 // 30 second timeout
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -358,16 +376,23 @@ export class GeminiService {
       }
 
       const data = await response.json();
+      if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid Gemini response format: missing text in response');
+      }
       return data.candidates[0].content.parts[0].text;
     } catch (error: any) {
+      if (error.message.includes('timeout')) {
+        console.error('[callGemini] Request timed out - network may be slow');
+        throw new Error('Request timed out (30s). Check your internet connection and try again, or switch to a different provider.');
+      }
       throw error;
     }
   }
 
   /**
-   * OpenAI-Compatible API Implementation
-   * Works for: OpenAI, Groq, DeepSeek, XAI, Together, OpenRouter, Perplexity, Mistral
-   */
+    * OpenAI-Compatible API Implementation
+    * Works for: OpenAI, Groq, DeepSeek, XAI, Together, OpenRouter, Perplexity, Mistral
+    */
   private async callOpenAICompatible(
     provider: string,
     apiKey: string,
@@ -386,31 +411,44 @@ export class GeminiService {
 
     messages.push({ role: 'user', content: prompt });
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        ...(provider === 'openrouter' && {
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'CoreDNA'
-        })
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.maxTokens || 2048
-      })
-    });
+    try {
+      const response = await this.withTimeout(
+        fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            ...(provider === 'openrouter' && {
+              'HTTP-Referer': window.location.origin,
+              'X-Title': 'CoreDNA'
+            })
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: options.temperature || 0.7,
+            max_tokens: options.maxTokens || 2048
+          })
+        }),
+        30000 // 30 second timeout
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`${provider} API error: ${error.error?.message || response.statusText}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`${provider} API error: ${error.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.choices?.[0]?.message?.content) {
+        throw new Error(`Invalid response from ${provider}: missing message content`);
+      }
+      return data.choices[0].message.content;
+    } catch (error: any) {
+      if (error.message.includes('timeout')) {
+        throw new Error(`${provider} request timed out (30s). Try again or switch providers.`);
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
   }
 
   /**
@@ -433,23 +471,36 @@ export class GeminiService {
       body.system = options.systemPrompt;
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
+    try {
+      const response = await this.withTimeout(
+        fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }),
+        30000
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Claude API error: ${error.error?.message || response.statusText}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Claude API error: ${error.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.content?.[0]?.text) {
+        throw new Error('Invalid Claude response format: missing text in content');
+      }
+      return data.content[0].text;
+    } catch (error: any) {
+      if (error.message.includes('timeout')) {
+        throw new Error('Claude request timed out (30s). Try again or switch providers.');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.content[0].text;
   }
 
   /**
@@ -461,27 +512,40 @@ export class GeminiService {
     prompt: string,
     options: GenerateOptions
   ): Promise<string> {
-    const response = await fetch('https://api.cohere.ai/v1/generate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.maxTokens || 2048
-      })
-    });
+    try {
+      const response = await this.withTimeout(
+        fetch('https://api.cohere.ai/v1/generate', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model,
+            prompt,
+            temperature: options.temperature || 0.7,
+            max_tokens: options.maxTokens || 2048
+          })
+        }),
+        30000
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Cohere API error: ${error.message || response.statusText}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Cohere API error: ${error.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.generations?.[0]?.text) {
+        throw new Error('Invalid Cohere response format: missing generation text');
+      }
+      return data.generations[0].text;
+    } catch (error: any) {
+      if (error.message.includes('timeout')) {
+        throw new Error('Cohere request timed out (30s). Try again or switch providers.');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.generations[0].text;
   }
 
   /**
