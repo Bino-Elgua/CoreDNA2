@@ -1,0 +1,229 @@
+================================================================================
+                    COREDNA2 SUPABASE SETUP - QUICK REFERENCE
+================================================================================
+
+⏱️  ESTIMATED TIME: 15 minutes
+
+================================================================================
+STEP 1: CREATE SUPABASE PROJECT
+================================================================================
+
+1. Go to: https://supabase.com/dashboard
+2. Click "New Project"
+3. Fill in:
+   - Name: CoreDNA2
+   - Database Password: (create strong password)
+   - Region: us-east-1 (or closest to you)
+   - Plan: Free (for now)
+4. Click "Create new project"
+5. Wait 2-3 minutes...
+
+================================================================================
+STEP 2: GET YOUR CREDENTIALS
+================================================================================
+
+In Supabase Dashboard:
+1. Go to: Settings → API (left sidebar)
+2. Copy these TWO values:
+
+   VITE_SUPABASE_URL = (copy "Project URL")
+   VITE_SUPABASE_ANON_KEY = (copy "Anon Key")
+
+SAVE THESE - you need them in Step 5!
+
+================================================================================
+STEP 3: RUN SQL MIGRATIONS
+================================================================================
+
+In Supabase:
+1. Go to SQL Editor (left sidebar)
+2. Click "New Query"
+3. Copy-paste each migration below, one by one
+4. Click "Run" after each
+5. Wait for "Query executed successfully"
+
+See SUPABASE_SETUP_MANUAL.md for all SQL code (it's all there ready to copy)
+
+MIGRATIONS (in this order):
+  1. User Settings Table
+  2. Portfolios Table
+  3. Campaigns, Leads, Assets
+  4. Notes & Activity Logs
+  5. Tier System & Teams
+  6. Affiliate Hub (optional)
+
+================================================================================
+STEP 4: VERIFY TABLES CREATED
+================================================================================
+
+In Supabase, go to Table Editor (left sidebar)
+
+You should see:
+  ✅ user_settings
+  ✅ portfolios
+  ✅ campaigns
+  ✅ portfolio_leads
+  ✅ portfolio_assets
+  ✅ portfolio_notes
+  ✅ activity_log
+  ✅ offline_queue
+  ✅ teams
+
+If all 9 are there, continue ✓
+
+================================================================================
+STEP 5: CREATE .env.local FILE
+================================================================================
+
+In CoreDNA2-work directory, create file named: .env.local
+
+Copy this (replace YOUR values from Step 2):
+
+---BEGIN---
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+---END---
+
+Save the file.
+
+WHERE TO FIND VALUES:
+  → Supabase Dashboard → Settings → API
+  → Project URL = VITE_SUPABASE_URL
+  → Anon Key = VITE_SUPABASE_ANON_KEY
+
+================================================================================
+STEP 6: TEST CONNECTION
+================================================================================
+
+In terminal:
+$ npm install
+$ npm run dev
+
+Open browser: http://localhost:3000
+
+Check browser console (F12 → Console):
+  Look for: "[App] ✓ Supabase client initialized"
+
+If you see it → SUCCESS ✅
+
+If you see error → check TROUBLESHOOTING section below
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ERROR: "Missing environment variables"
+  → Check .env.local exists and has both keys (no extra spaces)
+
+ERROR: "Supabase client not initialized"
+  → Check .env.local has correct values
+  → Check browser console for actual error
+  → Clear cache: Ctrl+Shift+Del
+
+ERROR: "RLS policy violation"
+  → Make sure you're logged in
+  → Check user_id matches in database
+
+ERROR: "Table doesn't exist"
+  → Refresh Supabase dashboard (F5)
+  → Re-run the migration
+  → Check for SQL errors in editor
+
+OFFLINE TEST:
+  → Go to DevTools → Network → Offline
+  → Create a portfolio (should still work)
+  → Go back Online
+  → Should sync automatically
+
+================================================================================
+WHAT'S CREATED
+================================================================================
+
+TABLES:
+  • user_settings    → API keys, tier, usage
+  • portfolios       → Brand portfolios
+  • campaigns        → Marketing campaigns
+  • portfolio_leads  → Extracted leads
+  • portfolio_assets → Campaign assets (images, copy)
+  • portfolio_notes  → Notes on portfolios
+  • activity_log     → User action history
+  • offline_queue    → Operations queued while offline
+  • teams            → Team management (agency tier)
+
+SECURITY:
+  • RLS enabled on all tables
+  • Users can only access their own data
+  • Anonymous users supported
+  • Offline queue auto-syncs
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+After Supabase is working:
+
+1. Go to CoreDNA2 app at http://localhost:3000
+2. Go to Settings page
+3. Add optional API keys:
+   - Email (Resend, SendGrid, Mailgun)
+   - Social (Instagram, Twitter, LinkedIn, Facebook)
+   - Video (fal.ai)
+   - Deployment (Vercel, Netlify)
+4. Extract your first brand DNA
+5. Create campaigns
+6. Deploy!
+
+================================================================================
+USEFUL COMMANDS
+================================================================================
+
+# Test Supabase connection:
+npm run dev
+
+# View SQL migrations:
+cat supabase/migrations/*.sql
+
+# Check .env.local is set:
+cat .env.local
+
+# See offline queue:
+In browser console:
+  console.log(hybridStorage.getSyncStatus())
+
+# Manual sync:
+In browser console:
+  hybridStorage.syncNow()
+
+# Clear test data:
+In Supabase SQL Editor:
+  DELETE FROM campaigns;
+  DELETE FROM portfolio_leads;
+  DELETE FROM portfolio_assets;
+  DELETE FROM portfolios;
+
+================================================================================
+IMPORTANT REMINDERS
+================================================================================
+
+⚠️  NEVER commit .env.local to GitHub
+⚠️  Anon Key is SAFE for frontend (RLS protects data)
+⚠️  Never expose Service Role Key (backend only)
+⚠️  .gitignore already includes .env.local
+⚠️  Save your Supabase database password!
+⚠️  Check Supabase status: https://supabase.com/status
+
+================================================================================
+STILL STUCK?
+================================================================================
+
+1. Read full manual: SUPABASE_SETUP_MANUAL.md
+2. Check architecture: COMPLETION_STATUS.md
+3. Check app logs: npm run dev (watch terminal)
+4. Check browser console: F12 → Console tab
+5. Check Supabase logs: Supabase Dashboard → Logs
+
+For more help, see GitHub Issues or ask in Discord.
+
+================================================================================
+                            GOOD LUCK! 🚀
+================================================================================
