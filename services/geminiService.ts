@@ -862,12 +862,76 @@ export const findLeadsWithMaps = (niche: string, latitude?: number, longitude?: 
   return geminiService.generate(provider, prompt);
 };
 
-export const runCloserAgent = (lead: any, sender?: any) => {
+export const runCloserAgent = async (lead: any, sender?: any, options?: { sendEmail?: boolean; sendSocial?: boolean }) => {
   const provider = getActiveLLMProvider();
   const leadInfo = JSON.stringify(lead).substring(0, 500);
   const senderInfo = sender ? JSON.stringify(sender).substring(0, 500) : 'Generic portfolio';
-  const prompt = `Generate a complete closer portfolio for lead: ${leadInfo}. Sender profile: ${senderInfo}. Include target identity extraction, 3 sample social posts with image prompts, personalized email outreach, and 3 service packages.`;
-  return geminiService.generate(provider, prompt);
+  const prompt = `Generate a complete closer portfolio for lead: ${leadInfo}. Sender profile: ${senderInfo}. Include target identity extraction, 3 sample social posts with image prompts, personalized email outreach with subject line and body, and 3 service packages (Starter, Growth, Dominate). Format each email component clearly.`;
+  
+  try {
+    const response = await geminiService.generate(provider, prompt);
+    const strategy = parseCloserResponse(response);
+    
+    // Auto-send email if configured
+    if (options?.sendEmail && lead.contactEmail) {
+      const { emailService } = await import('./emailService');
+      const emailPayload = emailService.createCloserEmail(lead, strategy);
+      const emailResult = await emailService.sendEmail(emailPayload);
+      console.log('[runCloserAgent] Email send result:', emailResult);
+    }
+    
+    // Auto-post social if configured
+    if (options?.sendSocial) {
+      const { socialPostingService } = await import('./socialPostingService');
+      const platforms = socialPostingService.getConfiguredPlatforms();
+      if (platforms.length > 0 && strategy.socialSamples?.length > 0) {
+        for (const post of strategy.socialSamples) {
+          await socialPostingService.postToAll({
+            text: post.caption || post.text,
+            imageUrl: post.imageUrl,
+            hashtags: post.hashtags,
+          }).catch(e => console.error('[runCloserAgent] Social post failed:', e));
+        }
+      }
+    }
+    
+    return strategy;
+  } catch (e: any) {
+    console.error('[runCloserAgent] Error:', e.message);
+    throw e;
+  }
+};
+
+/**
+ * Parse closer agent response into structured data
+ */
+const parseCloserResponse = (response: string): any => {
+  try {
+    // Try to extract JSON if wrapped
+    let jsonStr = response;
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+    
+    return JSON.parse(jsonStr);
+  } catch {
+    // Fallback: parse as text
+    return {
+      pitch: response.substring(0, 500),
+      emailStrategy: {
+        subject: 'Partnership Opportunity',
+        body: response.substring(0, 1000)
+      },
+      socialSamples: [{
+        text: response.substring(0, 280),
+        hashtags: ['partnership', 'opportunity']
+      }],
+      serviceTiers: [
+        { name: 'Starter', price: '$500/mo' },
+        { name: 'Growth', price: '$1500/mo' },
+        { name: 'Dominate', price: '$3000/mo' }
+      ]
+    };
+  }
 };
 
 /**

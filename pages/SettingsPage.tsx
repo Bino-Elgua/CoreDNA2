@@ -1334,6 +1334,104 @@ const SettingsPage: React.FC = () => {
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* EMAIL CONFIGURATION SECTION */}
+                    <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} className="mb-8 border-t pt-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">📧 Email Delivery</h3>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Provider</label>
+                                <select
+                                    value={settings.email?.provider || ''}
+                                    onChange={(e) => { setSettings(prev => ({...prev, email: {...prev.email, provider: e.target.value as any}})); setHasChanges(true); }}
+                                    className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                                >
+                                    <option value="">-- Select Provider --</option>
+                                    <option value="resend">Resend (Recommended)</option>
+                                    <option value="sendgrid">SendGrid</option>
+                                    <option value="mailgun">Mailgun</option>
+                                    <option value="gmail">Gmail API</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API Key</label>
+                                <input
+                                    type="password"
+                                    value={settings.email?.apiKey || ''}
+                                    onChange={(e) => { setSettings(prev => ({...prev, email: {...prev.email, apiKey: e.target.value}})); setHasChanges(true); }}
+                                    placeholder="Paste API key..."
+                                    className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">From Address (Optional)</label>
+                                <input
+                                    type="email"
+                                    value={settings.email?.fromAddress || ''}
+                                    onChange={(e) => { setSettings(prev => ({...prev, email: {...prev.email, fromAddress: e.target.value}})); setHasChanges(true); }}
+                                    placeholder="noreply@example.com"
+                                    className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* SOCIAL MEDIA CONFIGURATION SECTION */}
+                    <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} className="mb-8 border-t pt-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">📱 Social Media</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Instagram */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <h4 className="font-bold text-gray-900 dark:text-white mb-3">Instagram</h4>
+                                <input type="password" placeholder="Access Token" value={settings.social?.instagram?.accessToken || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, instagram: {...prev.social?.instagram, accessToken: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 mb-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                                <input type="text" placeholder="Account ID" value={settings.social?.instagram?.accountId || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, instagram: {...prev.social?.instagram, accountId: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                            </div>
+                            {/* Facebook */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <h4 className="font-bold text-gray-900 dark:text-white mb-3">Facebook</h4>
+                                <input type="password" placeholder="Access Token" value={settings.social?.facebook?.accessToken || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, facebook: {...prev.social?.facebook, accessToken: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 mb-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                                <input type="text" placeholder="Page ID" value={settings.social?.facebook?.pageId || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, facebook: {...prev.social?.facebook, pageId: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                            </div>
+                            {/* Twitter */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <h4 className="font-bold text-gray-900 dark:text-white mb-3">Twitter/X</h4>
+                                <input type="password" placeholder="Bearer Token (API v2)" value={settings.social?.twitter?.accessToken || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, twitter: {...prev.social?.twitter, accessToken: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                            </div>
+                            {/* LinkedIn */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <h4 className="font-bold text-gray-900 dark:text-white mb-3">LinkedIn</h4>
+                                <input type="password" placeholder="Access Token" value={settings.social?.linkedin?.accessToken || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, linkedin: {...prev.social?.linkedin, accessToken: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 mb-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                                <input type="text" placeholder="Account URN" value={settings.social?.linkedin?.accountId || ''} onChange={(e) => { setSettings(prev => ({...prev, social: {...prev.social, linkedin: {...prev.social?.linkedin, accountId: e.target.value}}})); setHasChanges(true); }} className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded text-sm" />
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* VIDEO & DEPLOYMENT SECTION */}
+                    <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} className="mb-8 border-t pt-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">🎥 Video & Deployment</h3>
+                        </div>
+                        <div className="space-y-6">
+                            {/* Video API */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-3">Video Generation</h4>
+                                <input type="password" placeholder="fal.ai API Key (Optional)" value={settings.video?.falAiKey || ''} onChange={(e) => { setSettings(prev => ({...prev, video: {...prev.video, falAiKey: e.target.value}})); setHasChanges(true); }} className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg" />
+                            </div>
+                            {/* Deployment APIs */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-3">Website Deployment</h4>
+                                <div className="space-y-3">
+                                    <input type="password" placeholder="Vercel Token (Optional)" value={settings.deployment?.vercelToken || ''} onChange={(e) => { setSettings(prev => ({...prev, deployment: {...prev.deployment, vercelToken: e.target.value}})); setHasChanges(true); }} className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg" />
+                                    <input type="password" placeholder="Netlify Token (Optional)" value={settings.deployment?.netlifyToken || ''} onChange={(e) => { setSettings(prev => ({...prev, deployment: {...prev.deployment, netlifyToken: e.target.value}})); setHasChanges(true); }} className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg" />
+                                    <input type="password" placeholder="GitHub Token (Optional)" value={settings.deployment?.githubToken || ''} onChange={(e) => { setSettings(prev => ({...prev, deployment: {...prev.deployment, githubToken: e.target.value}})); setHasChanges(true); }} className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg" />
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
             </div>
         </div>

@@ -9,7 +9,12 @@ import HealthCheckDisplay from './components/HealthCheckDisplay';
 import { errorHandler } from './services/errorHandlingService';
 import { authService } from './services/authService';
 import { hybridStorage } from './services/hybridStorageService';
-// import { migrateLegacyKeys } from './services/settingsService'; // Function doesn't exist
+import { initializeEmailService } from './services/emailService';
+import { initializeSocialPostingService } from './services/socialPostingService';
+import { storageAdapter, initializeStorageAfterAuth } from './services/storageAdapter';
+import { initializeLeadScrapingService } from './services/leadScrapingService';
+import { initializeVideoGenerationService } from './services/videoGenerationService';
+import { initializeWebDeploymentService } from './services/webDeploymentService';
 
 // Lazy load pages - importing from root pages/ directory
 const ExtractPage = React.lazy(() => import('./pages/ExtractPage'));
@@ -145,9 +150,59 @@ const App: React.FC = () => {
       const syncStatus = hybridStorage.getSyncStatus();
       console.log('[App] Sync status:', syncStatus);
 
+      // STEP 4: Initialize email service
+      try {
+        initializeEmailService();
+        console.log('[App] ✓ Email service initialized');
+      } catch (e) {
+        console.warn('[App] Email service initialization failed (non-critical):', e);
+      }
+
+      // STEP 5: Initialize social posting service
+      try {
+        initializeSocialPostingService();
+        console.log('[App] ✓ Social posting service initialized');
+      } catch (e) {
+        console.warn('[App] Social service initialization failed (non-critical):', e);
+      }
+
+      // STEP 6: Initialize storage adapter
+      try {
+        initializeStorageAfterAuth();
+        console.log('[App] ✓ Storage adapter initialized');
+      } catch (e) {
+        console.warn('[App] Storage adapter initialization failed (non-critical):', e);
+      }
+
+      // STEP 7: Initialize lead scraping service
+      try {
+        initializeLeadScrapingService();
+        console.log('[App] ✓ Lead scraping service initialized');
+      } catch (e) {
+        console.warn('[App] Lead scraping service initialization failed (non-critical):', e);
+      }
+
+      // STEP 8: Initialize video generation service
+      try {
+        initializeVideoGenerationService();
+        console.log('[App] ✓ Video generation service initialized');
+      } catch (e) {
+        console.warn('[App] Video generation service initialization failed (non-critical):', e);
+      }
+
+      // STEP 9: Initialize web deployment service
+      try {
+        initializeWebDeploymentService();
+        console.log('[App] ✓ Web deployment service initialized');
+      } catch (e) {
+        console.warn('[App] Web deployment service initialization failed (non-critical):', e);
+      }
+
       // Subscribe to auth changes
       authService.onAuthChange((user) => {
         console.log('[App] Auth state changed:', user);
+        // Re-initialize storage adapter after auth change
+        initializeStorageAfterAuth();
       });
 
       const settings = localStorage.getItem('core_dna_settings');

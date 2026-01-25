@@ -71,13 +71,37 @@ const SchedulerPage: React.FC = () => {
     const filteredScheduled = scheduled.filter(a => selectedDnaId === 'all' || a.brandId === selectedDnaId);
 
     const handleSyncToPlatform = async (asset: ScheduledAsset) => {
-        const enabledWorkflows = getEnabledWorkflows();
-        if (enabledWorkflows.length === 0) {
-            console.log("No workflow provider enabled in Settings. Post locked to local grid only.");
-            return;
-        }
+         try {
+             // Try direct social posting first
+             const { socialPostingService } = await import('../services/socialPostingService');
+             const configuredPlatforms = socialPostingService.getConfiguredPlatforms();
+             
+             if (configuredPlatforms.length > 0) {
+                 console.log(`[Scheduler] Posting to ${configuredPlatforms.join(', ')}`);
+                 const results = await socialPostingService.postToAll({
+                     text: asset.content || asset.title || '',
+                     imageUrl: asset.imageUrl,
+                     hashtags: asset.hashtags,
+                 });
+                 
+                 const successful = results.filter(r => r.success);
+                 if (successful.length > 0) {
+                     console.log(`[Scheduler] ✓ Posted to ${successful.length} platform(s)`);
+                     return;
+                 }
+             }
+         } catch (e) {
+             console.error('[Scheduler] Social posting failed:', e);
+         }
 
-        const provider = enabledWorkflows[0];
+         // Fallback to workflows if social posting not configured
+         const enabledWorkflows = getEnabledWorkflows();
+         if (enabledWorkflows.length === 0) {
+             console.log("No social media or workflow provider enabled in Settings. Post locked to local grid only.");
+             return;
+         }
+
+         const provider = enabledWorkflows[0];
         const brand = profiles.find(p => p.id === asset.brandId) || profiles[0];
 
         // Update UI to 'syncing'
