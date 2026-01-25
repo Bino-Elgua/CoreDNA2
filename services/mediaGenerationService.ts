@@ -123,14 +123,14 @@ export async function generateImage(
       providerInfo = getActiveImageProvider();
     } catch (providerError: any) {
       console.error('[generateImage] ✗ Failed to get active provider:', providerError.message);
-      console.log('[generateImage] Falling back to placeholder');
-      const placeholder = generatePlaceholder(prompt);
-      console.log('[generateImage] Placeholder URL:', placeholder);
+      console.log('[generateImage] Falling back to free Unsplash image');
+      const freeImage = generateFreeImage(prompt);
+      console.log('[generateImage] Free Unsplash URL:', freeImage);
       return {
-        url: placeholder,
-        provider: 'placeholder',
+        url: freeImage,
+        provider: 'unsplash-free',
         generatedAt: Date.now(),
-        metadata: { reason: 'No provider configured', error: providerError.message }
+        metadata: { reason: 'No paid provider configured, using free Unsplash', fallback: true }
       };
     }
     
@@ -192,10 +192,10 @@ export async function generateImage(
         console.error(`[generateImage] Provider "${provider}" is not implemented`);
         console.error('[generateImage] Supported providers: dalle, stability, sd3, fal_flux, black_forest_labs, ideogram, google, imagen, replicate, runware, leonardo');
         result = {
-          url: generatePlaceholder(prompt),
-          provider: 'placeholder',
+          url: generateFreeImage(prompt),
+          provider: 'unsplash-free',
           generatedAt: Date.now(),
-          metadata: { reason: `Provider "${provider}" not implemented` }
+          metadata: { reason: `Provider "${provider}" not implemented, using free Unsplash`, fallback: true }
         };
     }
     
@@ -207,14 +207,14 @@ export async function generateImage(
   } catch (error: any) {
     console.error('[generateImage] ✗ Fatal error:', error.message);
     console.error('[generateImage] Error stack:', error.stack);
-    const placeholder = generatePlaceholder(prompt);
-    console.log('[generateImage] Returning placeholder:', placeholder);
+    const freeImage = generateFreeImage(prompt);
+    console.log('[generateImage] Returning free Unsplash image:', freeImage);
     console.log('[generateImage] ========== END IMAGE GENERATION (FALLBACK) ==========');
     return {
-      url: placeholder,
-      provider: 'placeholder',
+      url: freeImage,
+      provider: 'unsplash-free',
       generatedAt: Date.now(),
-      metadata: { error: error.message }
+      metadata: { error: error.message, fallback: true }
     };
   }
 }
@@ -944,8 +944,22 @@ async function generateFalVideo(
 /**
  * Generate placeholder image
  */
-function generatePlaceholder(prompt: string): string {
-  return `https://via.placeholder.com/1024x1024?text=${encodeURIComponent(prompt.substring(0, 50))}`;
+/**
+ * Generate free image from Unsplash Source API (no API key required)
+ * Returns diverse, high-quality images based on search query
+ */
+function generateFreeImage(prompt: string): string {
+  // Extract first 1-2 words from prompt for best results
+  const searchQuery = prompt
+    .split(' ')
+    .filter(word => word.length > 3)
+    .slice(0, 2)
+    .join(' ')
+    .trim() || 'business';
+  
+  // Unsplash Source API - completely free, no API key needed
+  // Returns random image matching the search query
+  return `https://source.unsplash.com/800x600/?${encodeURIComponent(searchQuery)}`;
 }
 
 /**

@@ -647,46 +647,151 @@ export class GeminiService {
 export const geminiService = new GeminiService();
 
 // Helper to get the active LLM provider
+/**
+ * Generate free campaign assets using templates (no API required)
+ * Used as fallback when no LLM provider is configured
+ */
+const generateFreeCampaignAssets = (dna: any, goal: string, channels: string[], count: number): any[] => {
+  console.log('[generateFreeCampaignAssets] Generating template-based assets (no API)');
+  
+  const assets = [];
+  const templates = [
+    {
+      title: `Discover ${dna.name}`,
+      copy: `${dna.tagline}. ${dna.description?.substring(0, 80) || 'Experience excellence'}`,
+      cta: 'Learn More',
+    },
+    {
+      title: `${dna.name}: ${goal}`,
+      copy: dna.keyMessaging?.[0] || `${dna.name} helps you ${goal.toLowerCase()}`,
+      cta: 'Get Started',
+    },
+    {
+      title: `Why Choose ${dna.name}?`,
+      copy: (dna.values?.[0] || 'Quality') + ' and ' + (dna.values?.[1] || 'Innovation'),
+      cta: 'Explore',
+    },
+    {
+      title: dna.name,
+      copy: dna.mission || `${dna.name} - ${goal}`,
+      cta: 'Join Us',
+    },
+    {
+      title: `${dna.tagline}`,
+      copy: dna.description?.substring(0, 120) || 'Transforming the industry',
+      cta: 'See How',
+    },
+  ];
+  
+  for (let i = 0; i < Math.min(count, templates.length); i++) {
+    const template = templates[i];
+    const channel = channels[i % channels.length];
+    
+    assets.push({
+      id: `asset_${i + 1}`,
+      channel: channel,
+      type: 'image',
+      title: template.title,
+      copy: template.copy,
+      cta: template.cta,
+      imagePrompt: `${template.title}. Style: ${dna.visualStyle?.description || 'professional'}. Colors: ${dna.colors?.map((c: any) => c.name).join(', ') || 'brand colors'}`,
+      content: template.copy,
+    });
+  }
+  
+  return assets;
+};
+
 const getActiveLLMProvider = () => {
-  const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
-  
-  console.log('[getActiveLLMProvider] Detecting active LLM provider...');
-  console.log('[getActiveLLMProvider] activeLLM setting:', settings.activeLLM);
-  console.log('[getActiveLLMProvider] Available providers:', settings.llms ? Object.keys(settings.llms) : 'none');
-  
-  // PRIORITY 1: Use explicitly set activeLLM from Settings if it has API key
-  if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey?.trim()) {
-    console.log(`[getActiveLLMProvider] ✓ Using configured activeLLM: ${settings.activeLLM}`);
-    return settings.activeLLM;
-  }
-  
-  if (settings.activeLLM) {
-    console.warn(`[getActiveLLMProvider] ⚠️ activeLLM set to ${settings.activeLLM} but no API key found. Falling back...`);
-  }
-  
-  // PRIORITY 2: Find first LLM with API key
-  if (settings.llms && Object.keys(settings.llms).length > 0) {
-    for (const [key, config] of Object.entries(settings.llms)) {
-      const llmConfig = config as any;
-      if (llmConfig?.apiKey?.trim()) {
-        console.log(`[getActiveLLMProvider] ✓ Using available LLM: ${key}`);
-        return key;
-      }
-    }
-  }
-  
-  console.error('[getActiveLLMProvider] ✗ No LLM provider configured with API key');
-  console.error('[getActiveLLMProvider] Configured providers:', settings.llms ? Object.keys(settings.llms) : 'none');
-  
-  throw new Error('No LLM provider configured. Go to Settings → API Keys to add an LLM provider and its API key.');
+   const settings = JSON.parse(localStorage.getItem('core_dna_settings') || '{}');
+   
+   console.log('[getActiveLLMProvider] Detecting active LLM provider...');
+   console.log('[getActiveLLMProvider] activeLLM setting:', settings.activeLLM);
+   console.log('[getActiveLLMProvider] Available providers:', settings.llms ? Object.keys(settings.llms) : 'none');
+   
+   // PRIORITY 1: Use explicitly set activeLLM from Settings if it has API key
+   if (settings.activeLLM && settings.llms?.[settings.activeLLM]?.apiKey?.trim()) {
+     console.log(`[getActiveLLMProvider] ✓ Using configured activeLLM: ${settings.activeLLM}`);
+     return settings.activeLLM;
+   }
+   
+   if (settings.activeLLM) {
+     console.warn(`[getActiveLLMProvider] ⚠️ activeLLM set to ${settings.activeLLM} but no API key found. Falling back...`);
+   }
+   
+   // PRIORITY 2: Find first LLM with API key
+   if (settings.llms && Object.keys(settings.llms).length > 0) {
+     for (const [key, config] of Object.entries(settings.llms)) {
+       const llmConfig = config as any;
+       if (llmConfig?.apiKey?.trim()) {
+         console.log(`[getActiveLLMProvider] ✓ Using available LLM: ${key}`);
+         return key;
+       }
+     }
+   }
+   
+   // PRIORITY 3: Return special marker for free template mode
+   console.warn('[getActiveLLMProvider] ⚠️ No LLM provider configured. Using free template-based generation');
+   return 'free-template';
 };
 
 // Wrapper exports for backwards compatibility
 export const analyzeBrandDNA = async (url: string, brandName?: string): Promise<any> => {
-   const provider = getActiveLLMProvider();
-   
-   // Simplified prompt that's more likely to get valid JSON
-   const prompt = `For the website "${url}" (brand: ${brandName || 'Unknown'}), create a JSON object with these EXACT fields. Return ONLY the JSON, nothing else:
+    const provider = getActiveLLMProvider();
+    
+    // If no LLM provider configured, use template-based brand profile
+    if (provider === 'free-template') {
+      console.log(`[analyzeBrandDNA] Generating template-based DNA for: ${url}`);
+      const now = Date.now();
+      return {
+        id: `dna_${now}`,
+        name: brandName || 'Brand',
+        tagline: 'Your professional brand presence',
+        description: 'A modern and innovative brand delivering excellence and quality to customers',
+        mission: 'To empower our customers with exceptional solutions',
+        elevatorPitch: '30-second brand pitch here',
+        values: ['Quality', 'Innovation', 'Excellence'],
+        keyMessaging: ['We deliver results', 'Innovation-driven', 'Customer-focused'],
+        colors: [
+          { hex: '#000000', name: 'Primary', usage: 'Main brand color' },
+          { hex: '#FFFFFF', name: 'Secondary', usage: 'Background' },
+          { hex: '#0066CC', name: 'Accent', usage: 'Highlights' }
+        ],
+        fonts: [
+          { family: 'Arial', usage: 'All', description: 'Clean, professional sans-serif' }
+        ],
+        visualStyle: { style: 'Modern', description: 'Contemporary and professional' },
+        toneOfVoice: { adjectives: ['professional', 'approachable', 'modern'], description: 'Professional yet approachable' },
+        confidenceScores: { visuals: 75, strategy: 80, tone: 80, overall: 78 },
+        brandPersonality: ['innovative', 'professional'],
+        targetAudience: 'Business professionals and enterprises',
+        personas: [{
+          name: 'Professional User',
+          demographics: 'Age 25-55',
+          psychographics: 'Quality-focused, results-driven',
+          painPoints: ['efficiency', 'ROI'],
+          behaviors: ['research', 'data-driven']
+        }],
+        swot: {
+          strengths: ['Quality', 'Innovation'],
+          weaknesses: ['Limited awareness'],
+          opportunities: ['Market expansion', 'New segments'],
+          threats: ['Competition']
+        },
+        competitors: [{
+          name: 'Competitor',
+          differentiation: 'Superior approach'
+        }],
+        websiteUrl: url,
+        detectedLanguage: 'en',
+        createdAt: now,
+        dnaVersionHistory: [now],
+        metadata: { source: 'free-template', note: 'Add API key in Settings for real AI extraction' }
+      };
+    }
+    
+    // Simplified prompt that's more likely to get valid JSON
+    const prompt = `For the website "${url}" (brand: ${brandName || 'Unknown'}), create a JSON object with these EXACT fields. Return ONLY the JSON, nothing else:
 
 {
   "id": "dna_generated",
@@ -967,6 +1072,14 @@ export const generateCampaignAssets = async (
   tone?: string
 ): Promise<any[]> => {
   const provider = getActiveLLMProvider();
+  
+  // If no LLM provider configured, use free template-based generation
+  if (provider === 'free-template') {
+    console.log(`[generateCampaignAssets] Generating ${count} assets for "${dna.name}" using free templates (no API)`);
+    const assets = generateFreeCampaignAssets(dna, goal, channels, count);
+    console.log(`[generateCampaignAssets] ✓ Generated ${assets.length} template-based assets`);
+    return assets;
+  }
   
   const channelsList = channels.join(', ');
   const toneLine = tone && tone !== 'Brand Default' ? `Tone: ${tone}` : `Tone: Match the brand's "${dna.toneOfVoice?.description || 'professional'}" voice`;
