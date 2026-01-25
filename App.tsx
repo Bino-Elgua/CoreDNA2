@@ -15,6 +15,10 @@ import { storageAdapter, initializeStorageAfterAuth } from './services/storageAd
 import { initializeLeadScrapingService } from './services/leadScrapingService';
 import { initializeVideoGenerationService } from './services/videoGenerationService';
 import { initializeWebDeploymentService } from './services/webDeploymentService';
+import { initializeAffiliateService } from './services/affiliateService';
+import { initializeSonicService } from './services/sonicService';
+import { initializeBattleModeService } from './services/battleModeService';
+import { initializeCollaborationService } from './services/collaborationService';
 
 // Lazy load pages - importing from root pages/ directory
 const ExtractPage = React.lazy(() => import('./pages/ExtractPage'));
@@ -196,6 +200,38 @@ const App: React.FC = () => {
         console.log('[App] ✓ Web deployment service initialized');
       } catch (e) {
         console.warn('[App] Web deployment service initialization failed (non-critical):', e);
+      }
+
+      // STEP 10: Initialize affiliate service
+      try {
+        initializeAffiliateService();
+        console.log('[App] ✓ Affiliate service initialized');
+      } catch (e) {
+        console.warn('[App] Affiliate service initialization failed (non-critical):', e);
+      }
+
+      // STEP 11: Initialize sonic service
+      try {
+        initializeSonicService();
+        console.log('[App] ✓ Sonic service initialized');
+      } catch (e) {
+        console.warn('[App] Sonic service initialization failed (non-critical):', e);
+      }
+
+      // STEP 12: Initialize battle mode service
+      try {
+        initializeBattleModeService();
+        console.log('[App] ✓ Battle mode service initialized');
+      } catch (e) {
+        console.warn('[App] Battle mode service initialization failed (non-critical):', e);
+      }
+
+      // STEP 13: Initialize collaboration service
+      try {
+        initializeCollaborationService();
+        console.log('[App] ✓ Collaboration service initialized');
+      } catch (e) {
+        console.warn('[App] Collaboration service initialization failed (non-critical):', e);
       }
 
       // Subscribe to auth changes

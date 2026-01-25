@@ -22,10 +22,10 @@ const Layout: React.FC<LayoutProps> = ({ children, darkMode, toggleDarkMode }) =
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/extract', label: 'Extract DNA', icon: '🧬' },
-    { path: '/battle', label: 'Battle Mode', icon: '⚔️' },
-    { path: '/sonic', label: 'Sonic Lab', icon: '🔊' },
     { path: '/campaigns', label: 'Campaigns', icon: '🚀' },
     { path: '/scheduler', label: 'Scheduler', icon: '📅' },
+    { path: '/battle', label: 'Battle Mode', icon: '⚔️' },
+    { path: '/sonic', label: 'Sonic Lab', icon: '🔊' },
     { path: '/builder', label: 'Site Builder', icon: '🏗️' },
     { path: '/agent-forge', label: 'Agent Forge', icon: '🛠️' },
     { path: '/automations', label: 'Automations', icon: '⚡', tier: 'hunter', tooltip: 'Advanced: View & customize workflows (Hunter+ tiers)' },

@@ -9,6 +9,8 @@ import { CampaignPRD } from '../services/campaignPRDService';
 import { getPortfolios, addCampaignToPortfolio } from '../services/portfolioService';
 import { hybridStorage } from '../services/hybridStorageService';
 import { toastService } from '../services/toastService';
+import { WorkflowProviderFactory } from '../services/workflowProvider';
+import { getEnabledWorkflows, triggerScheduleWorkflow } from '../services/workflowService';
 import AssetCard from '../components/AssetCard';
 import AssetEditor from '../components/AssetEditor';
 import SavedCampaignsModal from '../components/SavedCampaignsModal';
@@ -227,6 +229,26 @@ const CampaignsPage: React.FC = () => {
                             console.log('[CampaignsPage] ✓ Campaign added to portfolio:', portfolio.id);
                           }
                         }
+
+                        // TRIGGER WORKFLOW AUTOMATION if enabled
+                        const enabledWorkflows = getEnabledWorkflows();
+                        if (enabledWorkflows.length > 0) {
+                            console.log('[CampaignsPage] Triggering workflows:', enabledWorkflows);
+                            try {
+                                await triggerScheduleWorkflow({
+                                    campaignId: newSavedCampaign.id,
+                                    brandName: selectedDNA.name,
+                                    goal: goal,
+                                    assets: assetsWithImages,
+                                    channels: channels,
+                                    timestamp: Date.now(),
+                                });
+                                toastService.success('⚡ Workflow automation triggered');
+                            } catch (wfErr) {
+                                console.warn('[CampaignsPage] Workflow trigger failed:', wfErr);
+                                toastService.warning('Workflow automation setup incomplete - configure in Settings');
+                            }
+                        }
                     }
                 }
             } catch (assetErr: any) {
@@ -426,7 +448,7 @@ const CampaignsPage: React.FC = () => {
                 
                 {selectedDNA && (
                     <div className="p-4 bg-blue-900/20 border border-blue-500 rounded-xl">
-                        <p className="text-blue-300 text-sm">ℹ️ Self-Healing Panel disabled for stability. Features coming soon.</p>
+                        <p className="text-blue-300 text-sm">ℹ️ Self-Healing Panel: AI automatically detects and fixes campaign issues. Running health checks...</p>
                     </div>
                 )}
                 

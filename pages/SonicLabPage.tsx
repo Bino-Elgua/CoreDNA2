@@ -3,13 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BrandDNA } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { sonicService, SonicBrand } from '../services/sonicService';
+import { toastService } from '../services/toastService';
 
 const SonicLabPage: React.FC = () => {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<BrandDNA[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<BrandDNA | null>(null);
+  const [sonicBrand, setSonicBrand] = useState<SonicBrand | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [text, setText] = useState("Welcome to the Sonic Architecture Lab. This is how your brand sounds.");
+  const [voiceProvider, setVoiceProvider] = useState<'elevenlabs' | 'openai' | 'google' | 'azure' | 'browser'>('browser');
+  const [stability, setStability] = useState(75);
+  const [similarity, setSimilarity] = useState(40);
+  const [style, setStyle] = useState(0);
   
   // Audio Viz State
   const [bars, setBars] = useState<number[]>(new Array(20).fill(10));
@@ -20,7 +28,20 @@ const SonicLabPage: React.FC = () => {
           try {
               const parsed = JSON.parse(stored);
               setProfiles(parsed);
-              if (parsed.length > 0) setSelectedProfile(parsed[0]);
+              if (parsed.length > 0) {
+                  setSelectedProfile(parsed[0]);
+                  // Load or create sonic brand
+                  let sonic = sonicService.getSonicBrand(parsed[0].id);
+                  if (!sonic) {
+                      sonicService.createSonicBrand(parsed[0].id, parsed[0].name, {
+                          voiceType: 'neutral',
+                          provider: 'browser',
+                          tone: 'professional'
+                      }).then(setSonicBrand);
+                  } else {
+                      setSonicBrand(sonic);
+                  }
+              }
           } catch(e) {}
       }
   }, []);
@@ -38,35 +59,67 @@ const SonicLabPage: React.FC = () => {
       return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const handlePlay = () => {
-      if (!selectedProfile) return;
-      setIsPlaying(true);
-      
-      // Native Browser Speech for Demo purposes (Mocking the real API integration visualized in Settings)
-      const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Attempt to match tone to basic params
-      utterance.rate = 1.0; 
-      utterance.pitch = 1.0;
-      
-      const tone = selectedProfile.toneOfVoice.description.toLowerCase();
-      if (tone.includes('excited') || tone.includes('energetic')) {
-          utterance.rate = 1.2;
-          utterance.pitch = 1.2;
-      } else if (tone.includes('serious') || tone.includes('calm')) {
-          utterance.rate = 0.9;
-          utterance.pitch = 0.8;
-      }
+  const handlePlay = async () => {
+       if (!sonicBrand || !selectedProfile) return;
+       setIsPlaying(true);
+       
+       try {
+           // Use real service with voice provider
+           const audioUrl = await sonicService.generateAudio(text, sonicBrand, 'voiceover');
+           
+           // Play the audio
+           if (audioUrl && audioUrl !== `data:audio/wav;base64,web-speech-${Date.now()}`) {
+               const audio = new Audio(audioUrl);
+               audio.onended = () => setIsPlaying(false);
+               audio.play().catch(e => console.error('Audio play failed:', e));
+           } else {
+               // Fallback to Web Speech API
+               const utterance = new SpeechSynthesisUtterance(text);
+               utterance.rate = sonicBrand.rate;
+               utterance.pitch = sonicBrand.pitch;
+               utterance.onend = () => setIsPlaying(false);
+               window.speechSynthesis.speak(utterance);
+           }
+           
+           toastService.success('🎵 Audio generated and playing');
+       } catch (e: any) {
+           console.error('Failed to generate audio:', e);
+           toastService.error(`Audio generation failed: ${e.message}`);
+           setIsPlaying(false);
+       }
+   };
 
-      utterance.onend = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
-  };
-
-  const handleSelectProfile = (id: string) => {
-      const p = profiles.find(x => x.id === id) || null;
-      setSelectedProfile(p);
-      if (p) setText(`This is the generated voice for ${p.name}. We embody ${p.values.join(' and ')}.`);
-  };
+  const handleSelectProfile = async (id: string) => {
+       const p = profiles.find(x => x.id === id) || null;
+       setSelectedProfile(p);
+       if (p) {
+           setText(`This is the generated voice for ${p.name}. We embody ${p.values.join(' and ')}.`);
+           // Load or create sonic brand for this profile
+           let sonic = sonicService.getSonicBrand(p.id);
+           if (!sonic) {
+               sonic = await sonicService.createSonicBrand(p.id, p.name, {
+                   voiceType: 'neutral',
+                   provider: voiceProvider,
+                   tone: 'professional'
+               });
+           }
+           setSonicBrand(sonic);
+       }
+   };
+   
+   const handleGenerateAudioLogo = async () => {
+       if (!sonicBrand || !selectedProfile) return;
+       setIsGenerating(true);
+       
+       try {
+           const logoUrl = await sonicService.generateAudioLogo(sonicBrand, selectedProfile.name);
+           toastService.success('🎵 Audio logo generated successfully!');
+       } catch (e: any) {
+           toastService.error(`Logo generation failed: ${e.message}`);
+       } finally {
+           setIsGenerating(false);
+       }
+   };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -100,13 +153,13 @@ const SonicLabPage: React.FC = () => {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
                     
                     <div className="flex justify-between items-start">
-                        <div>
-                             <h3 className="text-white font-bold text-lg mb-1">{selectedProfile.name}</h3>
-                             <p className="text-gray-400 text-sm">Voice Synthesis Engine: Active</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <span className="px-2 py-1 rounded bg-white/10 text-xs text-white border border-white/10">{selectedProfile.sonicIdentity?.voiceType || 'Standard Voice'}</span>
-                        </div>
+                     <div>
+                          <h3 className="text-white font-bold text-lg mb-1">{selectedProfile.name}</h3>
+                          <p className="text-gray-400 text-sm">Voice Provider: {sonicBrand?.provider || 'browser'}</p>
+                     </div>
+                     <div className="flex gap-2">
+                         <span className="px-2 py-1 rounded bg-white/10 text-xs text-white border border-white/10">{sonicBrand?.voiceType || 'neutral'}</span>
+                     </div>
                     </div>
 
                     {/* Bars */}
@@ -151,40 +204,44 @@ const SonicLabPage: React.FC = () => {
                         </h3>
                         
                         <div className="space-y-6">
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-xs font-bold uppercase text-gray-500">Stability</label>
-                                    <span className="text-xs text-gray-500">75%</span>
-                                </div>
-                                <input type="range" className="w-full accent-dna-primary" />
-                            </div>
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-xs font-bold uppercase text-gray-500">Similarity Boost</label>
-                                    <span className="text-xs text-gray-500">40%</span>
-                                </div>
-                                <input type="range" className="w-full accent-dna-secondary" />
-                            </div>
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="text-xs font-bold uppercase text-gray-500">Style Exaggeration</label>
-                                    <span className="text-xs text-gray-500">0%</span>
-                                </div>
-                                <input type="range" className="w-full accent-dna-accent" />
-                            </div>
-                        </div>
+                             <div>
+                                 <div className="flex justify-between mb-2">
+                                     <label className="text-xs font-bold uppercase text-gray-500">Stability</label>
+                                     <span className="text-xs text-gray-500">{stability}%</span>
+                                 </div>
+                                 <input type="range" min="0" max="100" value={stability} onChange={(e) => setStability(Number(e.target.value))} className="w-full accent-dna-primary" />
+                             </div>
+                             <div>
+                                 <div className="flex justify-between mb-2">
+                                     <label className="text-xs font-bold uppercase text-gray-500">Similarity Boost</label>
+                                     <span className="text-xs text-gray-500">{similarity}%</span>
+                                 </div>
+                                 <input type="range" min="0" max="100" value={similarity} onChange={(e) => setSimilarity(Number(e.target.value))} className="w-full accent-dna-secondary" />
+                             </div>
+                             <div>
+                                 <div className="flex justify-between mb-2">
+                                     <label className="text-xs font-bold uppercase text-gray-500">Style Exaggeration</label>
+                                     <span className="text-xs text-gray-500">{style}%</span>
+                                 </div>
+                                 <input type="range" min="0" max="100" value={style} onChange={(e) => setStyle(Number(e.target.value))} className="w-full accent-dna-accent" />
+                             </div>
+                         </div>
                     </div>
 
                     <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-8 rounded-3xl text-white relative overflow-hidden group cursor-pointer">
-                        <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
-                        <h3 className="font-bold text-xl mb-2">Generate Audio Logo</h3>
-                        <p className="text-white/70 text-sm mb-6 max-w-xs">
-                            Create a unique 3-second sound mark based on your brand colors and visual pattern.
-                        </p>
-                        <button className="px-6 py-2 bg-white/20 backdrop-blur-md rounded-lg font-bold hover:bg-white/30 transition-colors text-sm border border-white/20">
-                            Generate (Beta)
-                        </button>
-                    </div>
+                         <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
+                         <h3 className="font-bold text-xl mb-2">Generate Audio Logo</h3>
+                         <p className="text-white/70 text-sm mb-6 max-w-xs">
+                             Create a unique 3-second sound mark based on your brand identity.
+                         </p>
+                         <button 
+                             onClick={handleGenerateAudioLogo}
+                             disabled={isGenerating || !sonicBrand}
+                             className="px-6 py-2 bg-white/20 backdrop-blur-md rounded-lg font-bold hover:bg-white/30 transition-colors text-sm border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                         >
+                             {isGenerating ? 'Generating...' : 'Generate Logo'}
+                         </button>
+                     </div>
                 </div>
 
             </div>

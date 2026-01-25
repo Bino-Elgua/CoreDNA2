@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
 import { BrandDNA, BattleReport, GlobalSettings } from '../types';
-import { runBattleSimulation } from '../services/geminiService';
+import { battleModeService } from '../services/battleModeService';
+import { toastService } from '../services/toastService';
 import rlmService from '../services/rlmService';
 import { useNavigate } from 'react-router-dom';
 
@@ -51,16 +52,17 @@ const BattleModePage: React.FC = () => {
        const brandB = profiles.find(p => p.id === brandBId);
 
        if (!brandA || !brandB) {
-           alert("Please select two distinct brands to battle.");
+           toastService.error("Please select two distinct brands to battle.");
            return;
        }
        if (brandA.id === brandB.id) {
-           alert("A brand cannot battle itself. Select a different opponent.");
+           toastService.error("A brand cannot battle itself. Select a different opponent.");
            return;
        }
 
        setIsFighting(true);
        setBattleReport(null);
+       toastService.info(`⚔️ ${brandA.name} vs ${brandB.name} - Battle starting...`);
 
        try {
            let report: BattleReport;
@@ -68,13 +70,14 @@ const BattleModePage: React.FC = () => {
            if (rlmActive && settings?.rlm) {
                report = await rlmService.runDeepBattleSimulation(brandA, brandB, settings.rlm);
            } else {
-               report = await runBattleSimulation(brandA, brandB);
+               report = await battleModeService.runBattle(brandA, brandB);
            }
            
            setBattleReport(report);
-       } catch (e) {
+           toastService.success(`⚔️ Battle complete! ${report.winner === 'A' ? brandA.name : report.winner === 'B' ? brandB.name : 'Tie'} wins!`);
+       } catch (e: any) {
            console.error(e);
-           alert("The battle simulation failed. The servers might be overloaded with strategy.");
+           toastService.error(`Battle simulation failed: ${e.message}`);
        } finally {
            setIsFighting(false);
        }
@@ -211,27 +214,52 @@ const BattleModePage: React.FC = () => {
                     </div>
 
                     {/* Text Analysis */}
-                    <div className="space-y-6">
-                        <div className={`p-8 rounded-3xl text-white shadow-lg ${battleReport.winner === 'A' ? 'bg-blue-600' : battleReport.winner === 'B' ? 'bg-red-600' : 'bg-gray-600'}`}>
-                            <h3 className="text-lg font-bold uppercase opacity-80 mb-2">The Victor</h3>
-                            <div className="text-4xl font-black mb-4">
-                                {battleReport.winner === 'A' ? brandA?.name : battleReport.winner === 'B' ? brandB?.name : 'Stalemate'}
-                            </div>
-                            <p className="leading-relaxed opacity-90">{battleReport.summary}</p>
-                        </div>
+                     <div className="space-y-6">
+                         <div className={`p-8 rounded-3xl text-white shadow-lg ${battleReport.winner === 'A' ? 'bg-blue-600' : battleReport.winner === 'B' ? 'bg-red-600' : 'bg-gray-600'}`}>
+                             <h3 className="text-lg font-bold uppercase opacity-80 mb-2">The Victor</h3>
+                             <div className="text-4xl font-black mb-4">
+                                 {battleReport.winner === 'A' ? brandA?.name : battleReport.winner === 'B' ? brandB?.name : 'Stalemate'}
+                             </div>
+                             <p className="leading-relaxed opacity-90 mb-4">
+                                 Competitive Gap: <span className="font-bold">{battleReport.competitiveGap.toFixed(1)}%</span>
+                             </p>
+                             <p className="leading-relaxed opacity-90">Market Position: <span className="font-bold">{battleReport.winner === 'A' ? battleReport.marketPosition.brandA : battleReport.winner === 'B' ? battleReport.marketPosition.brandB : 'Equal'}</span></p>
+                         </div>
 
-                        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-100 dark:border-gray-700 shadow-lg">
-                            <h3 className="font-bold text-dna-primary uppercase text-sm mb-4">Blue Ocean Opportunity (Gap Analysis)</h3>
-                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                                {battleReport.gapAnalysis}
-                            </p>
-                            
-                            <h3 className="font-bold text-pink-500 uppercase text-sm mb-4">Visual Critique</h3>
-                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed italic">
-                                "{battleReport.visualCritique}"
-                            </p>
-                        </div>
-                    </div>
+                         <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-100 dark:border-gray-700 shadow-lg">
+                             <h3 className="font-bold text-dna-primary uppercase text-sm mb-4">Winning Factors</h3>
+                             <ul className="text-sm text-gray-600 dark:text-gray-300 mb-6 space-y-2">
+                                 {battleReport.winningFactors.slice(0, 3).map((factor, i) => (
+                                     <li key={i} className="flex items-start gap-2">
+                                         <span className="text-green-500 font-bold">✓</span>
+                                         <span>{factor}</span>
+                                     </li>
+                                 ))}
+                             </ul>
+                             
+                             <h3 className="font-bold text-orange-500 uppercase text-sm mb-4 mt-6">Areas for Improvement</h3>
+                             <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+                                 {Object.entries(battleReport.losingFactors).slice(0, 2).map(([category, recommendation], i) => (
+                                     <li key={i} className="flex items-start gap-2">
+                                         <span className="text-orange-500 font-bold">→</span>
+                                         <span><span className="font-bold">{category}:</span> {recommendation}</span>
+                                     </li>
+                                 ))}
+                             </ul>
+                         </div>
+
+                         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-3xl p-8 border border-purple-200 dark:border-purple-700">
+                             <h3 className="font-bold text-purple-900 dark:text-purple-300 uppercase text-sm mb-4">Strategic Recommendations</h3>
+                             <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-2">
+                                 {battleReport.strategicRecommendations.slice(0, 3).map((rec, i) => (
+                                     <li key={i} className="flex items-start gap-2">
+                                         <span className="text-purple-500">💡</span>
+                                         <span>{rec}</span>
+                                     </li>
+                                 ))}
+                             </ul>
+                         </div>
+                     </div>
                 </div>
             </motion.div>
         )}
