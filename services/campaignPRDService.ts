@@ -64,9 +64,10 @@ async function generateAssetImages(userStories: CampaignUserStory[], onProgress?
          console.log(`[generateAssetImages] Image prompt: ${prompt.substring(0, 100)}`);
          
          const result = await generateImageSingle(prompt, { style: 'professional marketing' });
-        
-        const imageUrl = result ? result.url : `https://via.placeholder.com/1024x1024?text=${encodeURIComponent(story.title)}`;
-        imageMap.set(story.id, imageUrl);
+         
+         // Use generated image URL (will be Unsplash free image or real API image)
+         const imageUrl = result?.url || 'https://source.unsplash.com/1024x1024/?marketing';
+         imageMap.set(story.id, imageUrl);
         console.log(`[generateAssetImages] ✓ Generated image for ${story.id}: ${imageUrl.substring(0, 80)}`);
       } catch (error: any) {
         console.error(`[generateAssetImages] Failed for ${story.id}:`, error.message, error.stack);

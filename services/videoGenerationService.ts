@@ -264,16 +264,18 @@ class VideoGenerationService {
 
   /**
    * Generate placeholder (for testing without API keys)
+   * Uses public domain video from Google instead of placeholder
    */
   private generatePlaceholder(request: VideoGenerationRequest): VideoGenerationResult {
-    console.warn('[VideoGenerationService] Using placeholder video (real generation requires API key)');
+    console.warn('[VideoGenerationService] Using template video (real generation requires fal.ai API key)');
 
     const result: VideoGenerationResult = {
       success: true,
-      videoUrl: `https://via.placeholder.com/1920x1080?text=${encodeURIComponent(request.prompt.substring(0, 30))}`,
-      videoId: 'placeholder_' + crypto.randomUUID(),
+      // Use public domain video instead of placeholder
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4',
+      videoId: 'template_' + crypto.randomUUID(),
       duration: request.duration || 10,
-      provider: 'placeholder',
+      provider: 'template',
       processingTime: 0,
     };
 

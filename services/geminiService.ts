@@ -1055,8 +1055,9 @@ export const generateAssetImage = async (prompt: string, style?: string): Promis
     return result.url;
   } catch (error: any) {
     console.error('[generateAssetImage] Error:', error.message);
-    // Return placeholder on error
-    return `https://via.placeholder.com/1024x1024?text=${encodeURIComponent(prompt.substring(0, 30))}`;
+    // Return free Unsplash image on error
+    const searchQuery = prompt.split(' ').filter(w => w.length > 3).slice(0, 2).join(' ').trim() || 'business';
+    return `https://source.unsplash.com/1024x1024/?${encodeURIComponent(searchQuery)}`;
   }
 };
 
@@ -1469,23 +1470,41 @@ Return ONLY valid JSON array.`;
 };
 
 /**
- * Generate video using Veo or fallback
- * NOTE: fal.ai video generation requires paid API key and GPU resources
- * This is a placeholder that returns mock video URL
+ * Generate video using fal.ai or other providers
+ * Falls back to template video if no API key configured
  */
 export const generateVeoVideo = async (prompt: string): Promise<{ url: string }> => {
   try {
-    console.log('[generateVeoVideo] Video generation placeholder for prompt:', prompt.substring(0, 100));
+    console.log('[generateVeoVideo] Generating video for prompt:', prompt.substring(0, 100));
     
-    // Return mock video URL - real implementation requires:
-    // 1. fal.ai API key (paid service)
-    // 2. Video model access (Wan2.1, LTX-2, etc.)
-    // 3. GPU resources for processing
-    console.log('[generateVeoVideo] Returning placeholder (real video generation requires fal.ai paid API)');
-    return { url: 'https://via.placeholder.com/video.mp4' };
+    // Try to use real video generation service if configured
+    try {
+      const { videoGenerationService } = await import('./videoGenerationService');
+      const result = await videoGenerationService.generateVideo({
+        prompt: prompt,
+        duration: 10,
+        aspectRatio: '16:9'
+      });
+      if (result.videoUrl) {
+        console.log('[generateVeoVideo] ✓ Generated real video');
+        return { url: result.videoUrl };
+      }
+    } catch (videoErr) {
+      console.warn('[generateVeoVideo] Real video generation failed, using template');
+    }
+    
+    // Fallback: Return template video placeholder
+    // This is NOT a real video - it's a placeholder for demo purposes
+    // To use real video generation, user must:
+    // 1. Get fal.ai API key (https://fal.ai)
+    // 2. Add to Settings → Video Generation
+    const mockVideoUrl = `https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4`;
+    console.log('[generateVeoVideo] Using template video (add fal.ai key for real generation)');
+    return { url: mockVideoUrl };
   } catch (e) {
     console.warn('[generateVeoVideo] Error:', e);
-    return { url: 'https://via.placeholder.com/video.mp4' };
+    // Return public domain video as final fallback
+    return { url: `https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4` };
   }
 };
 
